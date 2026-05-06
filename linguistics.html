@@ -1,0 +1,797 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>GLYPH/SPACE — Unicode 3D Explorer · MIND/SPACE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:ital,wght@0,400;0,700;1,400&family=Noto+Sans:wght@300;400&family=Noto+Sans+JP&family=Noto+Sans+Arabic&family=Noto+Sans+Devanagari&display=swap');
+
+:root {
+  --red:    #E63329;
+  --yellow: #F5C518;
+  --blue:   #1B4FDB;
+  --black:  #080808;
+  --white:  #F0EDE2;
+  --gray:   #1C1C1C;
+  --mid:    rgba(240,237,226,0.12);
+}
+
+* { margin:0; padding:0; box-sizing:border-box; }
+
+body {
+  background: var(--black);
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  overflow: hidden;
+  cursor: none;
+  user-select: none;
+}
+
+/* ─── CURSOR ─── */
+#cursor {
+  position: fixed; z-index: 9999;
+  width: 10px; height: 10px;
+  background: var(--red);
+  border-radius: 50%;
+  pointer-events: none;
+  transform: translate(-50%,-50%);
+  transition: width .15s, height .15s, background .15s;
+  mix-blend-mode: difference;
+}
+#cursor.hover { width:36px; height:36px; background:var(--yellow); }
+
+/* ─── CANVAS ─── */
+#c { display:block; position:fixed; inset:0; }
+
+/* ─── BACK LINK ─── */
+#back {
+  position: fixed; top:28px; left:36px; z-index:200;
+  font-size:10px; letter-spacing:3px; text-transform:uppercase;
+  color: rgba(240,237,226,0.4);
+  text-decoration: none;
+  display: flex; align-items: center; gap:8px;
+  transition: color .2s;
+  cursor: none;
+}
+#back:hover { color: var(--red); }
+#back::before { content:'←'; font-size:14px; }
+
+/* ─── TITLE ─── */
+#title-block {
+  position: fixed; top:20px; left:50%; transform:translateX(-50%);
+  text-align: center; z-index:200; pointer-events:none;
+}
+#title-block h1 {
+  font-family: 'Bebas Neue', sans-serif;
+  font-size: 22px; letter-spacing:6px;
+  color: var(--white);
+}
+#title-block p {
+  font-size:9px; letter-spacing:3px; color:rgba(240,237,226,0.3);
+  text-transform:uppercase; margin-top:2px;
+}
+
+/* ─── SEARCH ─── */
+#search-wrap {
+  position: fixed; top:50%; right:32px;
+  transform: translateY(-50%);
+  z-index:200; display:flex; flex-direction:column; gap:0;
+}
+
+#search-input-wrap {
+  position:relative; display:flex; align-items:center;
+}
+
+#search {
+  background: rgba(8,8,8,0.9);
+  border: 1px solid rgba(240,237,226,0.15);
+  border-bottom: none;
+  color: var(--white);
+  font-family: 'Space Mono', monospace;
+  font-size: 22px;
+  width: 200px;
+  padding: 16px 20px;
+  outline: none;
+  text-align: center;
+  letter-spacing: 4px;
+  cursor: none;
+  transition: border-color .2s;
+}
+#search:focus { border-color: var(--red); }
+#search::placeholder { color:rgba(240,237,226,0.2); font-size:11px; letter-spacing:2px; }
+
+#search-label {
+  font-size:9px; letter-spacing:3px; text-transform:uppercase;
+  color:rgba(240,237,226,0.3); text-align:center;
+  padding:8px 0;
+  border:1px solid rgba(240,237,226,0.15);
+  border-top: 2px solid var(--red);
+}
+
+/* ─── SCRIPT FILTERS ─── */
+#filters {
+  position: fixed; bottom:60px; left:50%;
+  transform: translateX(-50%);
+  display:flex; gap:8px; flex-wrap:wrap;
+  justify-content:center; z-index:200;
+  max-width: 780px;
+}
+
+.filter-btn {
+  font-family:'Space Mono',monospace;
+  font-size:9px; letter-spacing:2px; text-transform:uppercase;
+  padding:7px 14px;
+  background:transparent;
+  border:1px solid rgba(240,237,226,0.15);
+  color:rgba(240,237,226,0.4);
+  cursor:none; transition:all .2s;
+}
+.filter-btn:hover, .filter-btn.active {
+  border-color:var(--yellow);
+  color:var(--yellow);
+  background:rgba(245,197,24,0.06);
+}
+.filter-btn.active { border-width:2px; }
+
+/* ─── GLYPH DETAIL PANEL ─── */
+#detail {
+  position:fixed; left:32px; top:50%;
+  transform:translateY(-50%);
+  width:260px; z-index:200;
+  opacity:0; pointer-events:none;
+  transition:opacity .3s;
+}
+#detail.show { opacity:1; pointer-events:all; }
+
+#detail-glyph {
+  font-size:100px; line-height:1;
+  text-align:center;
+  margin-bottom:20px;
+  font-family:'Noto Sans','Noto Sans JP','Noto Sans Arabic','Noto Sans Devanagari', sans-serif;
+  filter:drop-shadow(0 0 20px rgba(230,51,41,0.4));
+}
+
+#detail-codepoint {
+  font-size:11px; letter-spacing:3px; color:var(--red);
+  text-transform:uppercase; text-align:center;
+  margin-bottom:8px;
+}
+
+#detail-name {
+  font-family:'Bebas Neue',sans-serif;
+  font-size:26px; letter-spacing:2px;
+  text-align:center; line-height:1.1;
+  margin-bottom:16px; color:var(--white);
+}
+
+#detail-meta {
+  border-top:1px solid rgba(240,237,226,0.08);
+  padding-top:16px; display:flex; flex-direction:column; gap:8px;
+}
+
+.meta-row {
+  display:flex; justify-content:space-between; align-items:center;
+}
+.meta-key { font-size:9px; letter-spacing:2px; color:rgba(240,237,226,0.3); text-transform:uppercase; }
+.meta-val { font-size:11px; color:var(--white); }
+
+#similar-label {
+  font-size:9px; letter-spacing:3px; color:rgba(240,237,226,0.3);
+  text-transform:uppercase; margin-top:20px; margin-bottom:10px;
+}
+
+#similar-glyphs {
+  display:flex; gap:6px; flex-wrap:wrap;
+}
+
+.sim-glyph {
+  width:36px; height:36px;
+  border:1px solid rgba(240,237,226,0.12);
+  display:flex; align-items:center; justify-content:center;
+  font-size:20px; cursor:none;
+  transition:border-color .2s, background .2s;
+  font-family:'Noto Sans','Noto Sans JP','Noto Sans Arabic',sans-serif;
+}
+.sim-glyph:hover { border-color:var(--red); background:rgba(230,51,41,0.1); }
+
+/* ─── STATUS BAR ─── */
+#statusbar {
+  position:fixed; bottom:0; left:0; right:0;
+  padding:12px 36px;
+  display:flex; justify-content:space-between;
+  border-top:1px solid rgba(240,237,226,0.06);
+  z-index:200; pointer-events:none;
+}
+#statusbar span {
+  font-size:9px; letter-spacing:2px;
+  color:rgba(240,237,226,0.25); text-transform:uppercase;
+}
+#hover-info { color:var(--yellow) !important; transition:opacity .2s; }
+
+/* ─── BAUHAUS CORNERS ─── */
+.bc { position:fixed; pointer-events:none; z-index:1; }
+.bc-tl { top:0;left:0;width:3px;height:60px;background:var(--red); }
+.bc-tr { top:0;right:0;width:3px;height:60px;background:var(--blue); }
+.bc-bl { bottom:0;left:0;width:60px;height:3px;background:var(--yellow); }
+
+/* ─── VIEW MODE TOGGLE ─── */
+#view-toggle {
+  position:fixed; top:28px; right:36px; z-index:200;
+  display:flex; gap:0;
+}
+.vt-btn {
+  font-family:'Space Mono',monospace;
+  font-size:9px; letter-spacing:2px; text-transform:uppercase;
+  padding:8px 14px; background:transparent;
+  border:1px solid rgba(240,237,226,0.15);
+  color:rgba(240,237,226,0.35); cursor:none;
+  transition:all .2s;
+}
+.vt-btn:first-child { border-right:none; }
+.vt-btn.active { background:var(--red); border-color:var(--red); color:var(--white); }
+.vt-btn:hover:not(.active) { color:var(--white); border-color:rgba(240,237,226,0.4); }
+</style>
+</head>
+<body>
+
+<div id="cursor"></div>
+
+<!-- Bauhaus corners -->
+<div class="bc bc-tl"></div>
+<div class="bc bc-tr"></div>
+<div class="bc bc-bl"></div>
+
+<!-- Back to brain -->
+<a id="back" href="../../index.html">MIND/SPACE</a>
+
+<!-- Title -->
+<div id="title-block">
+  <h1>GLYPH / SPACE</h1>
+  <p>Unicode · 3D Visual Explorer · Linguistics Zone</p>
+</div>
+
+<!-- View toggle -->
+<div id="view-toggle">
+  <button class="vt-btn active" onclick="setView('galaxy')" id="vt-galaxy">GALAXY</button>
+  <button class="vt-btn" onclick="setView('grid')" id="vt-grid">GRID</button>
+</div>
+
+<!-- Search -->
+<div id="search-wrap">
+  <div id="search-input-wrap">
+    <input id="search" type="text" maxlength="2" placeholder="TYPE" autocomplete="off" spellcheck="false">
+  </div>
+  <div id="search-label">SEARCH GLYPH</div>
+</div>
+
+<!-- Glyph detail -->
+<div id="detail">
+  <div id="detail-glyph">A</div>
+  <div id="detail-codepoint">U+0041</div>
+  <div id="detail-name">LATIN CAPITAL LETTER A</div>
+  <div id="detail-meta">
+    <div class="meta-row">
+      <span class="meta-key">Script</span>
+      <span class="meta-val" id="d-script">Latin</span>
+    </div>
+    <div class="meta-row">
+      <span class="meta-key">Category</span>
+      <span class="meta-val" id="d-cat">Uppercase Letter</span>
+    </div>
+    <div class="meta-row">
+      <span class="meta-key">Block</span>
+      <span class="meta-val" id="d-block">Basic Latin</span>
+    </div>
+    <div class="meta-row">
+      <span class="meta-key">Dec</span>
+      <span class="meta-val" id="d-dec">65</span>
+    </div>
+  </div>
+  <div id="similar-label">Visually Similar</div>
+  <div id="similar-glyphs"></div>
+</div>
+
+<!-- Script filters -->
+<div id="filters">
+  <button class="filter-btn active" onclick="filterScript('all')" data-script="all">ALL SCRIPTS</button>
+  <button class="filter-btn" onclick="filterScript('latin')" data-script="latin">LATIN</button>
+  <button class="filter-btn" onclick="filterScript('greek')" data-script="greek">GREEK</button>
+  <button class="filter-btn" onclick="filterScript('cyrillic')" data-script="cyrillic">CYRILLIC</button>
+  <button class="filter-btn" onclick="filterScript('arabic')" data-script="arabic">ARABIC</button>
+  <button class="filter-btn" onclick="filterScript('cjk')" data-script="cjk">CJK</button>
+  <button class="filter-btn" onclick="filterScript('devanagari')" data-script="devanagari">DEVANAGARI</button>
+  <button class="filter-btn" onclick="filterScript('symbols')" data-script="symbols">SYMBOLS</button>
+  <button class="filter-btn" onclick="filterScript('math')" data-script="math">MATH</button>
+</div>
+
+<!-- Status bar -->
+<div id="statusbar">
+  <span id="glyph-count">0 GLYPHS</span>
+  <span id="hover-info"></span>
+  <span>DRAG TO ROTATE · SCROLL TO ZOOM · CLICK A GLYPH</span>
+</div>
+
+<canvas id="c"></canvas>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ══════════════════════════════════════════════════════
+//  UNICODE DATA — curated set across scripts
+// ══════════════════════════════════════════════════════
+const SCRIPTS = {
+  latin: {
+    color: 0xE63329, label: 'Latin',
+    chars: 'ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz' +
+           'ÀÁÂÃÄÅÆÇÈÉÊËÌÍÎÏÐÑÒÓÔÕÖØÙÚÛÜÝÞßàáâãäåæçèéêëìíîïðñòóôõöøùúûüýþÿ' +
+           'ĀāĂăĄąĆćĈĉĊċČčĎďĐđĒēĔĕĖėĘęĚěĜĝĞğĠġĢģĤĥĦħĨĩĪīĬĭĮįİıĲĳĴĵĶķĸĹĺĻļĽľĿŀ'
+  },
+  greek: {
+    color: 0x1B4FDB, label: 'Greek',
+    chars: 'ΑΒΓΔΕΖΗΘΙΚΛΜΝΞΟΠΡΣΤΥΦΧΨΩαβγδεζηθικλμνξοπρσςτυφχψω' +
+           'ἀἁἂἃἄἅἆἇἈἉἊἋἌἍἎἏἐἑἒἓἔἕἘἙἚἛἜἝἠἡἢἣἤἥἦἧ'
+  },
+  cyrillic: {
+    color: 0xF5C518, label: 'Cyrillic',
+    chars: 'АБВГДЕЖЗИЙКЛМНОПРСТУФХЦЧШЩЪЫЬЭЮЯабвгдежзийклмнопрстуфхцчшщъыьэюя' +
+           'ЀЁЂЃЄЅІЇЈЉЊЋЌЍЎЏѐёђѓєѕіїјљњћќѝўџ'
+  },
+  arabic: {
+    color: 0x2A9D8F, label: 'Arabic',
+    chars: 'ابتثجحخدذرزسشصضطظعغفقكلمنهوي' +
+           'ءآأؤإئاةىًٌٍَُِّْ' +
+           'پچژگ'
+  },
+  cjk: {
+    color: 0xE76F51, label: 'CJK',
+    chars: '一二三四五六七八九十百千万人口日月火水木金土山川年生' +
+           '大小中上下左右前後東西南北春夏秋冬新古長短高低多少' +
+           '心手目耳口鼻足骨血肉皮毛'
+  },
+  devanagari: {
+    color: 0x8338EC, label: 'Devanagari',
+    chars: 'अआइईउऊऋएऐओऔकखगघङचछजझञटठडढणतथदधनपफबभमयरलवशषसह' +
+           'ांिीुूृेैोौ्ॐ'
+  },
+  symbols: {
+    color: 0xFF6B9D, label: 'Symbols',
+    chars: '★☆♠♣♥♦☀☁☂☃☄☎☐☑☒☓☔☕☖☗☘☙☚☛☜☝☞☟☠☡☢☣☤☥☦☧☨☩☪☫☬☭☮☯☰☱☲☳☴☵☶☷☸☹☺☻☼☽☾☿' +
+           '♀♁♂♃♄♅♆♇♈♉♊♋♌♍♎♏♐♑♒♓'
+  },
+  math: {
+    color: 0x4ECDC4, label: 'Math',
+    chars: '∀∁∂∃∄∅∆∇∈∉∊∋∌∍∎∏∐∑−∓∔∕∖∗∘∙√∛∜∝∞∟∠∡∢∣∤∥∦∧∨∩∪∫∬∭∮∯∰∱∲∳∴∵∶∷∸∹∺∻∼∽∾∿≀≁≂≃≄≅≆≇≈≉≊≋≌≍≎≏≐≑≒≓≔≕≖≗≘≙≚≛≜≝≞≟≠≡≢≣≤≥'
+  }
+};
+
+// Build flat glyph array
+const ALL_GLYPHS = [];
+Object.entries(SCRIPTS).forEach(([scriptKey, script]) => {
+  [...script.chars].forEach(char => {
+    const cp = char.codePointAt(0);
+    ALL_GLYPHS.push({
+      char, cp, scriptKey,
+      label: script.label,
+      color: script.color,
+      name: getCharName(char, cp, scriptKey),
+      block: getBlock(cp),
+      category: getCategory(scriptKey),
+    });
+  });
+});
+
+function getCharName(char, cp, script) {
+  const hex = cp.toString(16).toUpperCase().padStart(4,'0');
+  const names = {
+    0x0041:'LATIN CAPITAL A', 0x0042:'LATIN CAPITAL B', 0x0043:'LATIN CAPITAL C',
+    0x03B1:'GREEK SMALL ALPHA', 0x03B2:'GREEK SMALL BETA', 0x03B3:'GREEK SMALL GAMMA',
+    0x0410:'CYRILLIC CAPITAL A', 0x0411:'CYRILLIC CAPITAL BE',
+    0x2200:'FOR ALL', 0x2202:'PARTIAL DIFFERENTIAL', 0x221E:'INFINITY',
+    0x2605:'BLACK STAR', 0x2660:'BLACK SPADE',
+  };
+  return names[cp] || `${SCRIPTS[script].label.toUpperCase()} U+${hex}`;
+}
+
+function getBlock(cp) {
+  if (cp < 0x0080) return 'Basic Latin';
+  if (cp < 0x0100) return 'Latin-1 Supplement';
+  if (cp < 0x0180) return 'Latin Extended-A';
+  if (cp < 0x0250) return 'Latin Extended-B';
+  if (cp >= 0x0370 && cp < 0x0400) return 'Greek & Coptic';
+  if (cp >= 0x0400 && cp < 0x0500) return 'Cyrillic';
+  if (cp >= 0x0600 && cp < 0x0700) return 'Arabic';
+  if (cp >= 0x0900 && cp < 0x0980) return 'Devanagari';
+  if (cp >= 0x4E00 && cp < 0xA000) return 'CJK Unified';
+  if (cp >= 0x2600 && cp < 0x2700) return 'Misc Symbols';
+  if (cp >= 0x2200 && cp < 0x2300) return 'Math Operators';
+  return 'Unicode';
+}
+
+function getCategory(script) {
+  const map = {latin:'Letter',greek:'Letter',cyrillic:'Letter',
+    arabic:'Letter',devanagari:'Letter',cjk:'Ideograph',
+    symbols:'Symbol',math:'Math Symbol'};
+  return map[script] || 'Character';
+}
+
+// ══════════════════════════════════════════════════════
+//  THREE.JS SETUP
+// ══════════════════════════════════════════════════════
+const canvas = document.getElementById('c');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true });
+renderer.setPixelRatio(Math.min(devicePixelRatio, 2));
+renderer.setSize(innerWidth, innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.1;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x080808);
+scene.fog = new THREE.FogExp2(0x080808, 0.032);
+
+const camera = new THREE.PerspectiveCamera(55, innerWidth/innerHeight, 0.1, 300);
+camera.position.set(0, 0, 28);
+
+// Lighting
+scene.add(new THREE.AmbientLight(0xffffff, 0.6));
+const redL = new THREE.PointLight(0xE63329, 4, 60); redL.position.set(-20,15,10); scene.add(redL);
+const bluL = new THREE.PointLight(0x1B4FDB, 3, 60); bluL.position.set(20,-10,15); scene.add(bluL);
+const yelL = new THREE.PointLight(0xF5C518, 2, 40); yelL.position.set(0,20,-10);  scene.add(yelL);
+
+// ══════════════════════════════════════════════════════
+//  GLYPH SPRITES — render each char to canvas texture
+// ══════════════════════════════════════════════════════
+const glyphMeshes = [];
+let currentFilter = 'all';
+let currentView = 'galaxy';
+let selectedGlyph = null;
+
+// Pseudo-random but stable 3D positions (galaxy spiral)
+function galaxyPosition(i, total, scriptKey) {
+  // Spiral galaxy with script clusters
+  const scriptOffset = Object.keys(SCRIPTS).indexOf(scriptKey);
+  const armAngle = (scriptOffset / Object.keys(SCRIPTS).length) * Math.PI * 2;
+  
+  const t = i / total;
+  const radius = 3 + t * 18 + Math.random() * 3;
+  const theta = armAngle + t * Math.PI * 6 + (Math.random() - 0.5) * 1.2;
+  const phi = (Math.random() - 0.5) * 6;
+
+  return new THREE.Vector3(
+    radius * Math.cos(theta),
+    phi + Math.sin(theta * 0.5) * 2,
+    radius * Math.sin(theta)
+  );
+}
+
+function gridPosition(i, total) {
+  const cols = Math.ceil(Math.sqrt(total * 1.8));
+  const col = i % cols;
+  const row = Math.floor(i / cols);
+  const spacing = 2.4;
+  return new THREE.Vector3(
+    (col - cols/2) * spacing,
+    -(row - Math.ceil(total/cols)/2) * spacing,
+    0
+  );
+}
+
+// Canvas-based glyph texture
+function makeGlyphTexture(char, color) {
+  const size = 128;
+  const cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  const ctx = cv.getContext('2d');
+
+  // Background circle
+  ctx.beginPath();
+  ctx.arc(size/2, size/2, size/2 - 2, 0, Math.PI*2);
+  ctx.fillStyle = `rgba(8,8,8,0.0)`;
+  ctx.fill();
+
+  // Glyph
+  ctx.fillStyle = '#F0EDE2';
+  ctx.font = `${size * 0.52}px "Noto Sans", "Noto Sans JP", "Noto Sans Arabic", "Noto Sans Devanagari", serif`;
+  ctx.textAlign = 'center';
+  ctx.textBaseline = 'middle';
+  ctx.fillText(char, size/2, size/2 + 2);
+
+  const tex = new THREE.CanvasTexture(cv);
+  return tex;
+}
+
+// Create all glyph sprites
+function buildGlyphs() {
+  // Clear old
+  glyphMeshes.forEach(m => scene.remove(m.sprite));
+  glyphMeshes.length = 0;
+
+  const visible = ALL_GLYPHS.filter(g =>
+    currentFilter === 'all' || g.scriptKey === currentFilter
+  );
+
+  document.getElementById('glyph-count').textContent = `${visible.length} GLYPHS`;
+
+  visible.forEach((glyph, i) => {
+    const tex = makeGlyphTexture(glyph.char, glyph.color);
+    const mat = new THREE.SpriteMaterial({
+      map: tex,
+      transparent: true,
+      opacity: 0.85,
+      color: new THREE.Color(glyph.color).lerp(new THREE.Color(0xffffff), 0.3),
+    });
+    const sprite = new THREE.Sprite(mat);
+    sprite.scale.setScalar(currentView === 'grid' ? 1.6 : 1.2);
+
+    const pos = currentView === 'galaxy'
+      ? galaxyPosition(i, visible.length, glyph.scriptKey)
+      : gridPosition(i, visible.length);
+
+    sprite.position.copy(pos);
+    sprite.userData = { glyph, originalPos: pos.clone(), index: i };
+
+    scene.add(sprite);
+    glyphMeshes.push({ sprite, glyph, mat });
+  });
+}
+
+buildGlyphs();
+
+// ══════════════════════════════════════════════════════
+//  GRID LINES — Bauhaus structural feel
+// ══════════════════════════════════════════════════════
+function addGridLines() {
+  const mat = new THREE.LineBasicMaterial({ color:0x1a1a1a, transparent:true, opacity:0.4 });
+  for (let i = -5; i <= 5; i++) {
+    const g1 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(-30,i*4,0),new THREE.Vector3(30,i*4,0)]);
+    const g2 = new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(i*4,-20,0),new THREE.Vector3(i*4,20,0)]);
+    scene.add(new THREE.Line(g1,mat));
+    scene.add(new THREE.Line(g2,mat));
+  }
+}
+
+// ══════════════════════════════════════════════════════
+//  ORBIT CONTROLS
+// ══════════════════════════════════════════════════════
+let isDragging = false, prevMX=0, prevMY=0;
+let rotX=0, rotY=0, tRotX=0, tRotY=0;
+let zoom=28, tZoom=28;
+const mouse = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+
+canvas.addEventListener('mousedown', e => {
+  isDragging = true;
+  prevMX = e.clientX; prevMY = e.clientY;
+});
+canvas.addEventListener('mousemove', e => {
+  mouse.x = (e.clientX/innerWidth)*2-1;
+  mouse.y = -(e.clientY/innerHeight)*2+1;
+
+  document.getElementById('cursor').style.left = e.clientX+'px';
+  document.getElementById('cursor').style.top  = e.clientY+'px';
+
+  if (isDragging) {
+    tRotY += (e.clientX - prevMX) * 0.006;
+    tRotX += (e.clientY - prevMY) * 0.006;
+    tRotX = Math.max(-1.2, Math.min(1.2, tRotX));
+    prevMX = e.clientX; prevMY = e.clientY;
+  }
+});
+canvas.addEventListener('mouseup', () => isDragging = false);
+canvas.addEventListener('wheel', e => {
+  tZoom = Math.max(5, Math.min(55, tZoom + e.deltaY * 0.04));
+  e.preventDefault();
+}, { passive:false });
+
+// ══════════════════════════════════════════════════════
+//  HOVER + CLICK
+// ══════════════════════════════════════════════════════
+let hoveredMesh = null;
+
+function checkHover() {
+  raycaster.setFromCamera(mouse, camera);
+  const sprites = glyphMeshes.map(m => m.sprite);
+  const hits = raycaster.intersectObjects(sprites);
+
+  const hoverInfo = document.getElementById('hover-info');
+  const cursor = document.getElementById('cursor');
+
+  if (hits.length > 0) {
+    const hit = hits[0].object;
+    const { glyph } = hit.userData;
+    hoveredMesh = hit;
+    hoverInfo.textContent = `${glyph.char}  U+${glyph.cp.toString(16).toUpperCase().padStart(4,'0')}  ${glyph.label}`;
+    cursor.classList.add('hover');
+
+    // Scale up hovered
+    hit.scale.setScalar(2.2);
+  } else {
+    hoveredMesh = null;
+    hoverInfo.textContent = '';
+    cursor.classList.remove('hover');
+  }
+
+  // Reset scales
+  glyphMeshes.forEach(({ sprite, glyph }) => {
+    if (sprite !== hoveredMesh) {
+      const target = sprite === selectedGlyph ? 2.8 : (currentView==='grid'?1.6:1.2);
+      sprite.scale.lerp(new THREE.Vector3(target,target,target), 0.15);
+    }
+  });
+}
+
+canvas.addEventListener('click', () => {
+  if (hoveredMesh) {
+    const { glyph } = hoveredMesh.userData;
+    showDetail(glyph, hoveredMesh);
+    selectedGlyph = hoveredMesh;
+    // Focus camera toward it
+    tZoom = Math.min(tZoom, 18);
+  }
+});
+
+function showDetail(glyph, mesh) {
+  document.getElementById('detail-glyph').textContent = glyph.char;
+  document.getElementById('detail-codepoint').textContent = `U+${glyph.cp.toString(16).toUpperCase().padStart(4,'0')}`;
+  document.getElementById('detail-name').textContent = glyph.name;
+  document.getElementById('d-script').textContent = glyph.label;
+  document.getElementById('d-cat').textContent = glyph.category;
+  document.getElementById('d-block').textContent = glyph.block;
+  document.getElementById('d-dec').textContent = glyph.cp;
+
+  // Find similar glyphs (same script neighbors)
+  const sameScript = ALL_GLYPHS.filter(g => g.scriptKey === glyph.scriptKey && g.char !== glyph.char);
+  const similar = sameScript.slice(0, 8);
+  document.getElementById('similar-glyphs').innerHTML = similar.map(g =>
+    `<div class="sim-glyph" title="U+${g.cp.toString(16).toUpperCase()}" onclick="searchChar('${g.char}')">${g.char}</div>`
+  ).join('');
+
+  document.getElementById('detail').classList.add('show');
+}
+
+// ══════════════════════════════════════════════════════
+//  SEARCH
+// ══════════════════════════════════════════════════════
+document.getElementById('search').addEventListener('input', e => {
+  const val = e.target.value;
+  if (!val) return;
+  const char = [...val][0];
+  searchChar(char);
+});
+
+function searchChar(char) {
+  document.getElementById('search').value = char;
+  const found = glyphMeshes.find(m => m.glyph.char === char);
+  if (found) {
+    showDetail(found.glyph, found.sprite);
+    selectedGlyph = found.sprite;
+
+    // Animate camera toward it
+    const pos = found.sprite.position;
+    tRotY = Math.atan2(pos.x, zoom);
+  } else {
+    // Character not in current filter — show info anyway
+    const cp = char.codePointAt(0);
+    const scriptKey = Object.entries(SCRIPTS).find(([k,s]) => s.chars.includes(char))?.[0] || 'latin';
+    const glyph = {
+      char, cp, scriptKey,
+      label: SCRIPTS[scriptKey]?.label || 'Unicode',
+      name: `U+${cp.toString(16).toUpperCase().padStart(4,'0')}`,
+      block: getBlock(cp),
+      category: getCategory(scriptKey),
+    };
+    showDetail(glyph, null);
+  }
+}
+
+window.searchChar = searchChar;
+
+// ══════════════════════════════════════════════════════
+//  FILTER & VIEW
+// ══════════════════════════════════════════════════════
+function filterScript(script) {
+  currentFilter = script;
+  document.querySelectorAll('.filter-btn').forEach(b => {
+    b.classList.toggle('active', b.dataset.script === script);
+  });
+  document.getElementById('detail').classList.remove('show');
+  selectedGlyph = null;
+  buildGlyphs();
+}
+window.filterScript = filterScript;
+
+function setView(v) {
+  currentView = v;
+  document.getElementById('vt-galaxy').classList.toggle('active', v==='galaxy');
+  document.getElementById('vt-grid').classList.toggle('active', v==='grid');
+
+  if (v === 'grid') {
+    tRotX = 0; tRotY = 0; tZoom = 22;
+    addGridLines();
+  }
+  buildGlyphs();
+}
+window.setView = setView;
+
+// ══════════════════════════════════════════════════════
+//  PARTICLE FIELD — background dots
+// ══════════════════════════════════════════════════════
+(function() {
+  const cnt = 600;
+  const geo = new THREE.BufferGeometry();
+  const pos = new Float32Array(cnt*3);
+  for(let i=0;i<cnt;i++) {
+    pos[i*3]   = (Math.random()-0.5)*120;
+    pos[i*3+1] = (Math.random()-0.5)*80;
+    pos[i*3+2] = (Math.random()-0.5)*60;
+  }
+  geo.setAttribute('position', new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(geo, new THREE.PointsMaterial({
+    color:0x333333, size:0.15, transparent:true, opacity:0.5
+  })));
+})();
+
+// ══════════════════════════════════════════════════════
+//  ANIMATION
+// ══════════════════════════════════════════════════════
+const clock = new THREE.Clock();
+const pivot = new THREE.Group();
+scene.add(pivot);
+
+// Move all sprites under pivot for rotation
+function reparentToPivot() {
+  glyphMeshes.forEach(({ sprite }) => {
+    scene.remove(sprite);
+    pivot.add(sprite);
+  });
+}
+
+let galaxyGroup = new THREE.Group();
+scene.add(galaxyGroup);
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  rotX += (tRotX - rotX) * 0.08;
+  rotY += (tRotY - rotY) * 0.08;
+  zoom += (tZoom - zoom) * 0.08;
+
+  camera.position.set(
+    zoom * Math.sin(rotY) * Math.cos(rotX),
+    zoom * Math.sin(rotX),
+    zoom * Math.cos(rotY) * Math.cos(rotX)
+  );
+  camera.lookAt(0, 0, 0);
+
+  // Gentle drift on glyph sprites in galaxy view
+  if (currentView === 'galaxy') {
+    glyphMeshes.forEach(({ sprite }, i) => {
+      const orig = sprite.userData.originalPos;
+      if (orig) {
+        sprite.position.y = orig.y + Math.sin(t * 0.4 + i * 0.3) * 0.15;
+      }
+    });
+  }
+
+  // Animate lights
+  redL.position.x = Math.sin(t*0.3) * 25;
+  bluL.position.z = Math.cos(t*0.25) * 20;
+
+  checkHover();
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// Resize
+window.addEventListener('resize', () => {
+  camera.aspect = innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth, innerHeight);
+});
+
+// Block right-click on canvas
+canvas.addEventListener('contextmenu', e => e.preventDefault());
+</script>
+</body>
+</html>
