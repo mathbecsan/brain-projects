@@ -472,6 +472,7 @@ const ZONES = [
     color: 0xE63329,
     emissive: 0x6B0F0A,
     position: [-2.2, 1.2, 0.5],
+    url: "src/zones/hci/",
     desc: "Human-Computer Interaction sits at the core — understanding how people think, perceive, and interact with digital systems. Research-driven design with cognitive psychology at its heart.",
     skills: [
       { label: "User Research", cls: "red" },
@@ -490,6 +491,7 @@ const ZONES = [
     color: 0x1B4FDB,
     emissive: 0x071A5A,
     position: [2.0, 1.4, 0.2],
+    url: "src/zones/ux-ui/",
     desc: "Where function meets form. Crafting interfaces that disappear — so intuitive users never think about the interface, only the experience it enables.",
     skills: [
       { label: "Figma", cls: "blue" },
@@ -508,6 +510,7 @@ const ZONES = [
     color: 0xF5C518,
     emissive: 0x5C4800,
     position: [-0.3, 2.4, -1.0],
+    url: "src/zones/3d-modelling/",
     desc: "Building worlds beyond the screen. From architectural visualization to game-ready assets — shaping geometry into narrative.",
     skills: [
       { label: "Blender", cls: "yellow" },
@@ -526,6 +529,7 @@ const ZONES = [
     color: 0x2A9D8F,
     emissive: 0x083D38,
     position: [1.8, -0.8, 1.2],
+    url: "src/zones/development/",
     desc: "Full-stack thinking — from database schema to pixel-perfect UI. Building systems that scale, perform, and surprise.",
     skills: [
       { label: "React / Next.js", cls: "blue" },
@@ -544,6 +548,7 @@ const ZONES = [
     color: 0xE76F51,
     emissive: 0x5C200A,
     position: [-1.8, -0.6, -0.8],
+    url: "src/zones/games/",
     desc: "Play as a design language. Games as a medium for empathy, exploration, and delight — where mechanics become metaphors.",
     skills: [
       { label: "Unity", cls: "white" },
@@ -562,6 +567,7 @@ const ZONES = [
     color: 0x8338EC,
     emissive: 0x2D0A6B,
     position: [0.2, -1.8, 0.5],
+    url: "src/zones/web-experiences/",
     desc: "The browser as canvas. Crafting web experiences that blur the line between art and interface — storytelling through interaction.",
     skills: [
       { label: "Creative Coding", cls: "blue" },
@@ -1002,7 +1008,7 @@ function openPanel(zone) {
 
   const projEl = document.getElementById('zone-projects-list');
   projEl.innerHTML = zone.projects.map(p =>
-    `<div class="project-item"><span>${p}</span><span class="arrow">→</span></div>`
+    `<div class="project-item" onclick="navigateToZone('${zone.url}')"><span>${p}</span><span class="arrow">→</span></div>`
   ).join('');
 
   document.getElementById('zone-panel').classList.add('open');
@@ -1011,6 +1017,10 @@ function openPanel(zone) {
 function closePanel() {
   panelOpen = false;
   document.getElementById('zone-panel').classList.remove('open');
+}
+
+function navigateToZone(url) {
+  window.location.href = url;
 }
 
 // ============================================================
