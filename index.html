@@ -547,7 +547,7 @@ const ZONES = [
     tag: "Interactive Media",
     color: 0xE76F51,
     emissive: 0x5C200A,
-    position: [-1.8, -0.6, -0.8],
+    position: [-1.4, -0.6, 1.0],
     url: "src/zones/games/",
     desc: "Play as a design language. Games as a medium for empathy, exploration, and delight — where mechanics become metaphors.",
     skills: [
@@ -784,8 +784,13 @@ ZONES.forEach((zone, i) => {
   }
   group.add(innerMesh);
 
+  if (zone.name === "GAMES & APPS") {
+    ring.scale.setScalar(1.1);
+    innerMesh.scale.setScalar(1.2);
+  }
+
   // Pulse sphere (invisible, used for raycasting)
-  const hitGeo = new THREE.SphereGeometry(0.45, 8, 8);
+  const hitGeo = new THREE.SphereGeometry(0.55, 10, 10);
   const hitMat = new THREE.MeshBasicMaterial({ visible: false });
   const hitSphere = new THREE.Mesh(hitGeo, hitMat);
   hitSphere.userData = { zoneIndex: i };
