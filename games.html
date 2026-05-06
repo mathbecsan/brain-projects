@@ -1,0 +1,1252 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>LINGUA/WORLD — Language Explorer · MIND/SPACE</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Bebas+Neue&family=Space+Mono:wght@400;700&family=IBM+Plex+Sans:wght@300;400;600&family=Noto+Sans+JP&family=Noto+Sans+Arabic&family=Noto+Sans+Devanagari&display=swap');
+:root {
+  --red:#E63329; --yellow:#F5C518; --blue:#1B4FDB;
+  --black:#070709; --white:#F0EDE2; --gray:#141418;
+}
+*{margin:0;padding:0;box-sizing:border-box;}
+html,body{width:100%;height:100%;background:var(--black);color:var(--white);font-family:'IBM Plex Sans',sans-serif;overflow:hidden;}
+#cursor{position:fixed;z-index:9999;width:12px;height:12px;border:2px solid var(--white);border-radius:50%;pointer-events:none;transform:translate(-50%,-50%);transition:width .15s,height .15s,border-color .15s,background .15s;mix-blend-mode:difference;}
+#cursor.hover{width:44px;height:44px;background:rgba(245,197,24,.15);border-color:var(--yellow);}
+canvas#world{display:block;position:fixed;inset:0;}
+
+/* INTRO */
+#intro-screen{position:fixed;inset:0;z-index:800;background:var(--black);display:flex;flex-direction:column;align-items:center;justify-content:center;transition:opacity .9s ease;}
+#intro-screen.out{opacity:0;pointer-events:none;}
+.deco-circle{position:absolute;border-radius:50%;border:1px solid;pointer-events:none;}
+#intro-eyebrow{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:4px;color:var(--red);text-transform:uppercase;margin-bottom:24px;}
+#intro-title{font-family:'Bebas Neue',sans-serif;font-size:clamp(70px,13vw,160px);letter-spacing:6px;line-height:.9;text-align:center;margin-bottom:8px;}
+#intro-title span{color:var(--yellow);}
+#intro-sub{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:3px;color:rgba(240,237,226,.35);text-transform:uppercase;text-align:center;margin-bottom:48px;max-width:440px;line-height:2;}
+.lang-picker{display:flex;gap:10px;flex-wrap:wrap;justify-content:center;margin-bottom:40px;max-width:620px;}
+.lang-pill{display:flex;align-items:center;gap:10px;padding:12px 18px;border:1px solid rgba(240,237,226,.12);background:rgba(240,237,226,.03);cursor:none;transition:all .25s;font-size:12px;letter-spacing:1px;}
+.lang-pill:hover,.lang-pill.chosen{border-color:var(--yellow);background:rgba(245,197,24,.08);}
+.lang-pill.chosen{border-width:2px;}
+.lang-flag{font-size:20px;}.lang-name{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--white);text-transform:uppercase;}
+.lang-native{font-size:15px;opacity:.6;}
+#intro-enter{font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:5px;padding:18px 64px;background:var(--red);border:none;color:var(--white);cursor:none;transition:background .2s;}
+#intro-enter:hover{background:#c42820;}
+
+/* HUD */
+#top-bar{position:fixed;top:0;left:0;right:0;display:flex;justify-content:space-between;align-items:center;padding:18px 28px;background:linear-gradient(to bottom,rgba(7,7,9,.85),transparent);z-index:300;pointer-events:none;}
+#top-bar>*{pointer-events:all;}
+#back-btn{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;color:rgba(240,237,226,.4);background:none;border:1px solid rgba(240,237,226,.15);padding:8px 14px;cursor:none;transition:all .2s;}
+#back-btn:hover{color:var(--red);border-color:var(--red);}
+#lang-badge{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--yellow);display:flex;align-items:center;gap:8px;}
+#xp-block{display:flex;flex-direction:column;align-items:center;gap:5px;}
+#xp-label{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:rgba(240,237,226,.3);text-transform:uppercase;}
+#xp-track{width:140px;height:3px;background:rgba(240,237,226,.1);}
+#xp-fill{height:3px;background:var(--yellow);width:0%;transition:width .6s;}
+#xp-num{font-family:'Space Mono',monospace;font-size:9px;color:var(--yellow);}
+#streak{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--red);display:flex;align-items:center;gap:6px;}
+
+/* WORLD MAP */
+#world-map{position:fixed;inset:0;z-index:400;background:rgba(7,7,9,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .4s;}
+#world-map.show{opacity:1;pointer-events:all;}
+#wm-title{font-family:'Bebas Neue',sans-serif;font-size:44px;letter-spacing:4px;margin-bottom:6px;}
+#wm-sub{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:rgba(240,237,226,.3);text-transform:uppercase;margin-bottom:40px;}
+.zone-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;max-width:780px;width:92%;}
+.zone-card{border:1px solid rgba(240,237,226,.1);padding:24px 20px;cursor:none;transition:all .25s;position:relative;overflow:hidden;}
+.zone-card:hover{transform:translateY(-3px);border-color:rgba(240,237,226,.3);}
+.zc-icon{font-size:32px;margin-bottom:12px;}
+.zc-type{font-family:'Space Mono',monospace;font-size:8px;letter-spacing:3px;text-transform:uppercase;margin-bottom:5px;}
+.zc-name{font-family:'Bebas Neue',sans-serif;font-size:24px;letter-spacing:2px;margin-bottom:6px;}
+.zc-desc{font-size:11px;color:rgba(240,237,226,.5);line-height:1.6;margin-bottom:14px;}
+.zc-how{font-family:'Space Mono',monospace;font-size:9px;color:rgba(240,237,226,.3);line-height:1.7;border-top:1px solid rgba(240,237,226,.07);padding-top:10px;}
+.zc-bar{margin-top:12px;height:2px;background:rgba(240,237,226,.08);}
+.zc-prog{height:2px;transition:width .6s;}
+#wm-close{margin-top:32px;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;text-transform:uppercase;background:none;border:1px solid rgba(240,237,226,.2);color:rgba(240,237,226,.4);padding:10px 24px;cursor:none;transition:all .2s;}
+#wm-close:hover{border-color:var(--red);color:var(--red);}
+
+/* INSTRUCTION OVERLAY */
+#instr-overlay{position:fixed;inset:0;z-index:450;background:rgba(7,7,9,.95);display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .3s;}
+#instr-overlay.show{opacity:1;pointer-events:all;}
+#instr-box{width:min(520px,92vw);border:1px solid rgba(240,237,226,.12);background:var(--gray);padding:0;}
+#instr-head{padding:20px 28px;border-bottom:1px solid rgba(240,237,226,.07);display:flex;align-items:center;gap:16px;}
+#instr-icon{font-size:32px;}
+#instr-title-text{font-family:'Bebas Neue',sans-serif;font-size:30px;letter-spacing:3px;}
+#instr-body{padding:28px;}
+#instr-steps{list-style:none;display:flex;flex-direction:column;gap:14px;margin-bottom:28px;}
+#instr-steps li{display:flex;gap:14px;align-items:flex-start;font-size:13px;color:rgba(240,237,226,.8);line-height:1.6;}
+.instr-num{font-family:'Bebas Neue',sans-serif;font-size:22px;color:var(--yellow);line-height:1;flex-shrink:0;width:20px;}
+#instr-tip{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:1px;color:rgba(240,237,226,.3);padding:12px 16px;border-left:2px solid var(--yellow);background:rgba(245,197,24,.04);margin-bottom:24px;}
+#instr-start{width:100%;font-family:'Bebas Neue',sans-serif;font-size:18px;letter-spacing:4px;padding:16px;background:var(--yellow);border:none;color:var(--black);cursor:none;transition:background .2s;}
+#instr-start:hover{background:#ddb015;}
+
+/* GAME PANEL */
+#game-panel{position:fixed;inset:0;z-index:500;display:flex;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .35s;background:rgba(7,7,9,.92);backdrop-filter:blur(8px);}
+#game-panel.show{opacity:1;pointer-events:all;}
+#game-box{width:min(680px,94vw);border:1px solid rgba(240,237,226,.1);background:var(--gray);position:relative;}
+#game-header{padding:18px 28px;border-bottom:1px solid rgba(240,237,226,.07);display:flex;justify-content:space-between;align-items:center;}
+#game-title{font-family:'Bebas Neue',sans-serif;font-size:26px;letter-spacing:3px;}
+.g-meta{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:rgba(240,237,226,.3);}
+#game-close{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;background:none;border:1px solid rgba(240,237,226,.2);color:rgba(240,237,226,.5);padding:8px 14px;cursor:none;transition:all .2s;}
+#game-close:hover{border-color:var(--red);color:var(--red);}
+#game-body{padding:28px;min-height:320px;}
+#progress-dots{display:flex;gap:6px;padding:14px 28px;border-top:1px solid rgba(240,237,226,.07);}
+.prog-dot{width:8px;height:8px;border-radius:50%;background:rgba(240,237,226,.1);transition:background .3s;}
+.prog-dot.done{background:var(--yellow);}.prog-dot.current{background:var(--red);}
+#continue-btn{width:100%;font-family:'Bebas Neue',sans-serif;font-size:17px;letter-spacing:4px;padding:15px;background:var(--yellow);border:none;color:var(--black);cursor:none;transition:background .2s;display:none;}
+#continue-btn.show{display:block;}
+#continue-btn:hover{background:#ddb015;}
+
+/* SCORE FLASH */
+#score-flash{position:fixed;top:50%;left:50%;transform:translate(-50%,-50%);font-family:'Bebas Neue',sans-serif;font-size:80px;pointer-events:none;z-index:999;opacity:0;transition:opacity .25s,transform .25s;}
+#score-flash.show{opacity:1;transform:translate(-50%,-62%);}
+
+/* VOCAB */
+.vocab-glyph{font-size:clamp(56px,9vw,96px);text-align:center;font-family:'Noto Sans JP','Noto Sans Arabic','Noto Sans Devanagari','Noto Sans',serif;margin-bottom:6px;line-height:1;}
+.vocab-romanji{text-align:center;font-family:'Space Mono',monospace;font-size:12px;letter-spacing:2px;color:rgba(240,237,226,.4);margin-bottom:28px;}
+.vocab-choices{display:grid;grid-template-columns:1fr 1fr;gap:10px;}
+.vocab-choice{padding:14px 18px;border:1px solid rgba(240,237,226,.12);background:transparent;color:var(--white);font-family:'IBM Plex Sans',sans-serif;font-size:13px;text-align:left;cursor:none;transition:all .2s;display:flex;align-items:center;gap:10px;}
+.vocab-choice:hover{border-color:var(--yellow);background:rgba(245,197,24,.06);}
+.vocab-choice.correct{border-color:#2A9D8F!important;background:rgba(42,157,143,.15)!important;}
+.vocab-choice.wrong{border-color:var(--red)!important;background:rgba(230,51,41,.12)!important;}
+.vc-num{font-family:'Space Mono',monospace;font-size:10px;color:rgba(240,237,226,.3);}
+.vocab-hint{text-align:center;margin-top:18px;font-size:12px;color:rgba(240,237,226,.35);font-style:italic;}
+
+/* ALPHA */
+.alpha-question{font-family:'Bebas Neue',sans-serif;font-size:32px;letter-spacing:2px;text-align:center;margin-bottom:20px;color:var(--yellow);}
+.alpha-grid{display:grid;grid-template-columns:repeat(auto-fill,minmax(70px,1fr));gap:8px;max-height:260px;overflow-y:auto;}
+.alpha-card{border:1px solid rgba(240,237,226,.1);padding:12px 6px;text-align:center;cursor:none;transition:all .2s;display:flex;flex-direction:column;gap:4px;}
+.alpha-card:hover{border-color:var(--yellow);background:rgba(245,197,24,.06);}
+.alpha-char{font-size:30px;line-height:1;font-family:'Noto Sans JP','Noto Sans Arabic','Noto Sans Devanagari','Noto Sans',serif;}
+.alpha-rom{font-family:'Space Mono',monospace;font-size:9px;color:rgba(240,237,226,.4);}
+
+/* CULTURE */
+.culture-emoji{font-size:44px;margin-bottom:10px;}
+.culture-fact{font-size:13px;line-height:1.8;color:rgba(240,237,226,.75);margin-bottom:16px;padding:14px;border-left:2px solid rgba(240,237,226,.1);}
+.culture-q{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;color:var(--yellow);margin-bottom:14px;text-transform:uppercase;}
+.culture-opts{display:flex;flex-direction:column;gap:8px;}
+.culture-opt{padding:12px 16px;border:1px solid rgba(240,237,226,.12);background:transparent;color:var(--white);font-size:13px;text-align:left;cursor:none;transition:all .2s;width:100%;}
+.culture-opt:hover{border-color:var(--blue);background:rgba(27,79,219,.1);}
+.culture-opt.correct{border-color:#2A9D8F!important;background:rgba(42,157,143,.15)!important;}
+.culture-opt.wrong{border-color:var(--red)!important;background:rgba(230,51,41,.12)!important;}
+
+/* PHRASE */
+.phrase-target{font-size:11px;font-family:'Space Mono',monospace;letter-spacing:2px;color:rgba(240,237,226,.4);text-transform:uppercase;margin-bottom:6px;}
+.phrase-meaning{font-size:14px;color:var(--yellow);margin-bottom:20px;}
+.phrase-build{display:flex;flex-wrap:wrap;gap:8px;min-height:50px;padding:12px;border:1px dashed rgba(240,237,226,.15);margin-bottom:14px;align-items:center;}
+.phrase-placeholder{font-size:11px;color:rgba(240,237,226,.2);font-style:italic;}
+.phrase-slot{padding:8px 14px;border:1px solid var(--yellow);background:rgba(245,197,24,.08);font-size:13px;cursor:none;font-family:'Noto Sans JP','Noto Sans Arabic','Noto Sans',serif;}
+.phrase-slot:hover{background:rgba(245,197,24,.2);}
+.phrase-bank{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:18px;}
+.word-chip{padding:8px 14px;border:1px solid rgba(240,237,226,.15);font-size:13px;cursor:none;transition:all .2s;font-family:'Noto Sans JP','Noto Sans Arabic','Noto Sans',serif;}
+.word-chip:hover{border-color:var(--blue);background:rgba(27,79,219,.1);}
+.word-chip.used{opacity:.25;pointer-events:none;}
+.check-btn{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:2px;text-transform:uppercase;padding:10px 22px;background:none;border:1px solid rgba(240,237,226,.25);color:rgba(240,237,226,.6);cursor:none;transition:all .2s;margin-top:4px;}
+.check-btn:hover{border-color:var(--yellow);color:var(--yellow);}
+
+/* WRITE */
+.write-ref-char{text-align:center;font-size:60px;line-height:1;font-family:'Noto Sans JP','Noto Sans Arabic','Noto Sans Devanagari','Noto Sans',serif;margin-bottom:6px;}
+.write-label{text-align:center;font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;color:rgba(240,237,226,.35);text-transform:uppercase;margin-bottom:16px;}
+.write-canvas-wrap{position:relative;border:1px solid rgba(240,237,226,.12);background:#0d0d0f;margin-bottom:12px;}
+#draw-canvas{display:block;width:100%;height:180px;cursor:crosshair;}
+.write-ghost{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);font-size:120px;line-height:1;font-family:'Noto Sans JP','Noto Sans Arabic','Noto Sans Devanagari','Noto Sans',serif;opacity:.07;pointer-events:none;color:var(--white);}
+.write-controls{display:flex;gap:8px;}
+.wc-btn{font-family:'Space Mono',monospace;font-size:9px;letter-spacing:2px;text-transform:uppercase;padding:9px 18px;background:none;border:1px solid rgba(240,237,226,.2);color:rgba(240,237,226,.5);cursor:none;transition:all .2s;}
+.wc-btn:hover{border-color:var(--yellow);color:var(--yellow);}
+.wc-btn.primary{background:var(--red);border-color:var(--red);color:var(--white);}
+
+/* STORY */
+.story-title{font-family:'Bebas Neue',sans-serif;font-size:22px;letter-spacing:3px;color:var(--yellow);margin-bottom:20px;}
+.story-line{margin-bottom:18px;padding:14px;border-left:2px solid rgba(240,237,226,.08);}
+.story-native{font-size:clamp(14px,2.5vw,20px);font-family:'Noto Sans JP','Noto Sans Arabic','Noto Sans Devanagari','Noto Sans',serif;margin-bottom:6px;line-height:1.7;}
+.story-trans{font-size:11px;color:rgba(240,237,226,.4);font-style:italic;margin-bottom:8px;}
+.story-words{display:flex;gap:6px;flex-wrap:wrap;}
+.story-word-tag{font-size:10px;font-family:'Space Mono',monospace;padding:3px 8px;border:1px solid rgba(245,197,24,.25);color:var(--yellow);}
+.word-hl{border-bottom:1px dotted var(--yellow);color:var(--yellow);cursor:help;}
+
+/* RESULTS */
+#results-screen{position:fixed;inset:0;z-index:600;background:rgba(7,7,9,.97);display:flex;flex-direction:column;align-items:center;justify-content:center;opacity:0;pointer-events:none;transition:opacity .4s;}
+#results-screen.show{opacity:1;pointer-events:all;}
+.result-big{font-family:'Bebas Neue',sans-serif;font-size:110px;line-height:1;}
+.result-big.perfect{color:var(--yellow);}.result-big.good{color:#2A9D8F;}.result-big.ok{color:var(--blue);}
+#result-msg{font-family:'Space Mono',monospace;font-size:11px;letter-spacing:3px;color:rgba(240,237,226,.4);text-transform:uppercase;margin-bottom:28px;}
+#result-xp{font-family:'Bebas Neue',sans-serif;font-size:30px;color:var(--yellow);margin-bottom:44px;}
+.result-btns{display:flex;gap:12px;}
+.result-btn{font-family:'Space Mono',monospace;font-size:10px;letter-spacing:3px;text-transform:uppercase;padding:14px 30px;cursor:none;border:1px solid;transition:all .2s;}
+.result-btn.primary{background:var(--red);border-color:var(--red);color:var(--white);}
+.result-btn.secondary{background:transparent;border-color:rgba(240,237,226,.2);color:rgba(240,237,226,.5);}
+.result-btn:hover{opacity:.8;}
+
+/* CORNERS */
+.bc{position:fixed;pointer-events:none;z-index:1;}
+.bc-tl{top:0;left:0;width:3px;height:70px;background:var(--red);}
+.bc-tr{top:0;right:0;width:3px;height:70px;background:var(--blue);}
+.bc-bl{bottom:0;left:0;width:70px;height:3px;background:var(--yellow);}
+.bc-br{bottom:0;right:0;width:3px;height:70px;background:var(--yellow);}
+</style>
+</head>
+<body>
+<div id="cursor"></div>
+<div class="bc bc-tl"></div><div class="bc bc-tr"></div>
+<div class="bc bc-bl"></div><div class="bc bc-br"></div>
+<div id="score-flash"></div>
+
+<!-- INTRO -->
+<div id="intro-screen">
+  <div class="deco-circle" style="width:380px;height:380px;top:-100px;left:-100px;border-color:rgba(230,51,41,.08);"></div>
+  <div class="deco-circle" style="width:200px;height:200px;bottom:60px;right:80px;border-color:rgba(27,79,219,.12);"></div>
+  <div style="position:absolute;bottom:0;left:0;width:55%;height:3px;background:linear-gradient(to right,var(--yellow),transparent);"></div>
+  <div id="intro-eyebrow">MIND/SPACE · Games Zone · Language Lab</div>
+  <div id="intro-title">LINGUA<br><span>WORLD</span></div>
+  <div id="intro-sub">Explore cultures · Master alphabets<br>Learn vocabulary · Build fluency</div>
+  <div class="lang-picker" id="lang-picker">
+    <div class="lang-pill chosen" data-lang="jp" onclick="pickLang(this)"><span class="lang-flag">🇯🇵</span><span class="lang-name">Japanese</span><span class="lang-native">日本語</span></div>
+    <div class="lang-pill" data-lang="ar" onclick="pickLang(this)"><span class="lang-flag">🇸🇦</span><span class="lang-name">Arabic</span><span class="lang-native">العربية</span></div>
+    <div class="lang-pill" data-lang="fr" onclick="pickLang(this)"><span class="lang-flag">🇫🇷</span><span class="lang-name">French</span><span class="lang-native">Français</span></div>
+    <div class="lang-pill" data-lang="hi" onclick="pickLang(this)"><span class="lang-flag">🇮🇳</span><span class="lang-name">Hindi</span><span class="lang-native">हिन्दी</span></div>
+    <div class="lang-pill" data-lang="zh" onclick="pickLang(this)"><span class="lang-flag">🇨🇳</span><span class="lang-name">Mandarin</span><span class="lang-native">普通话</span></div>
+    <div class="lang-pill" data-lang="ru" onclick="pickLang(this)"><span class="lang-flag">🇷🇺</span><span class="lang-name">Russian</span><span class="lang-native">Русский</span></div>
+  </div>
+  <button id="intro-enter" onclick="enterWorld()">ENTER THE WORLD</button>
+</div>
+
+<!-- 3D WORLD -->
+<canvas id="world"></canvas>
+
+<!-- HUD -->
+<div id="top-bar">
+  <button id="back-btn" onclick="window.location.href='../../index.html'">← MIND/SPACE</button>
+  <div id="lang-badge"><span id="hud-flag">🇯🇵</span> <span id="hud-lang">JAPANESE</span></div>
+  <div id="xp-block">
+    <div id="xp-label">XP PROGRESS</div>
+    <div id="xp-track"><div id="xp-fill"></div></div>
+    <div id="xp-num">0 / 100 XP</div>
+  </div>
+  <div id="streak">🔥 <span id="streak-num">0</span> STREAK</div>
+</div>
+
+<!-- WORLD MAP -->
+<div id="world-map">
+  <div id="wm-title">CHOOSE YOUR MISSION</div>
+  <div id="wm-sub" id="wm-lang-sub">Select a challenge — click a card to see instructions</div>
+  <div class="zone-grid">
+
+    <div class="zone-card" style="border-color:rgba(27,79,219,.3);" onclick="showInstructions('vocab')">
+      <div class="zc-icon">📖</div>
+      <div class="zc-type" style="color:#7B9FFF;">Vocabulary</div>
+      <div class="zc-name">WORD HUNTER</div>
+      <div class="zc-desc">Match glyphs to their meanings and grow your word bank.</div>
+      <div class="zc-how">① A glyph appears on screen<br>② Pick the correct meaning from 4 options<br>③ 5 rounds per session</div>
+      <div class="zc-bar"><div class="zc-prog" id="prog-vocab" style="width:0%;background:#1B4FDB;"></div></div>
+    </div>
+
+    <div class="zone-card" style="border-color:rgba(245,197,24,.3);" onclick="showInstructions('alpha')">
+      <div class="zc-icon">🔤</div>
+      <div class="zc-type" style="color:var(--yellow);">Alphabet</div>
+      <div class="zc-name">SCRIPT LAB</div>
+      <div class="zc-desc">Identify characters from their sound. Learn every letter.</div>
+      <div class="zc-how">① A romanized sound is shown (e.g. "ka")<br>② Click the matching character in the grid<br>③ 5 rounds per session</div>
+      <div class="zc-bar"><div class="zc-prog" id="prog-alpha" style="width:0%;background:var(--yellow);"></div></div>
+    </div>
+
+    <div class="zone-card" style="border-color:rgba(230,51,41,.3);" onclick="showInstructions('culture')">
+      <div class="zc-icon">🏛️</div>
+      <div class="zc-type" style="color:var(--red);">Culture</div>
+      <div class="zc-name">CULTURE QUEST</div>
+      <div class="zc-desc">Discover traditions, foods, and customs through trivia.</div>
+      <div class="zc-how">① Read a cultural fact about the country<br>② Answer the trivia question below it<br>③ 5 rounds per session</div>
+      <div class="zc-bar"><div class="zc-prog" id="prog-culture" style="width:0%;background:var(--red);"></div></div>
+    </div>
+
+    <div class="zone-card" style="border-color:rgba(42,157,143,.3);" onclick="showInstructions('phrase')">
+      <div class="zc-icon">💬</div>
+      <div class="zc-type" style="color:#4ECDC4;">Phrases</div>
+      <div class="zc-name">PHRASE BUILDER</div>
+      <div class="zc-desc">Assemble real sentences from scrambled word blocks.</div>
+      <div class="zc-how">① See the meaning of a sentence in English<br>② Click word chips in the correct order<br>③ Click a placed word to remove it</div>
+      <div class="zc-bar"><div class="zc-prog" id="prog-phrase" style="width:0%;background:#2A9D8F;"></div></div>
+    </div>
+
+    <div class="zone-card" style="border-color:rgba(131,56,236,.3);" onclick="showInstructions('write')">
+      <div class="zc-icon">✍️</div>
+      <div class="zc-type" style="color:#B06EFF;">Writing</div>
+      <div class="zc-name">STROKE ORDER</div>
+      <div class="zc-desc">Trace characters freehand. Feel the script in your hand.</div>
+      <div class="zc-how">① A character is shown with a ghost guide<br>② Draw over it with your mouse or finger<br>③ Click CLEAR to redo, SUBMIT when done</div>
+      <div class="zc-bar"><div class="zc-prog" id="prog-write" style="width:0%;background:#8338EC;"></div></div>
+    </div>
+
+    <div class="zone-card" style="border-color:rgba(240,237,226,.1);" onclick="showInstructions('story')">
+      <div class="zc-icon">📚</div>
+      <div class="zc-type" style="color:rgba(240,237,226,.4);">Story</div>
+      <div class="zc-name">STORY MODE</div>
+      <div class="zc-desc">Read a mini-story in your target language with live translations.</div>
+      <div class="zc-how">① Read the bilingual story line by line<br>② Hover yellow words to see translations<br>③ Word glossary shown below each line</div>
+      <div class="zc-bar"><div class="zc-prog" id="prog-story" style="width:0%;background:rgba(240,237,226,.3);"></div></div>
+    </div>
+
+  </div>
+  <button id="wm-close" onclick="closeMap()">CLOSE MAP [ESC]</button>
+</div>
+
+<!-- INSTRUCTION OVERLAY -->
+<div id="instr-overlay">
+  <div id="instr-box">
+    <div id="instr-head">
+      <span id="instr-icon">📖</span>
+      <div>
+        <div style="font-family:'Space Mono',monospace;font-size:9px;letter-spacing:3px;color:rgba(240,237,226,.3);text-transform:uppercase;margin-bottom:4px;" id="instr-sub">HOW TO PLAY</div>
+        <div id="instr-title-text">WORD HUNTER</div>
+      </div>
+    </div>
+    <div id="instr-body">
+      <ul id="instr-steps"></ul>
+      <div id="instr-tip"></div>
+      <button id="instr-start" onclick="startFromInstr()">START MISSION →</button>
+    </div>
+  </div>
+</div>
+
+<!-- GAME PANEL -->
+<div id="game-panel">
+  <div id="game-box">
+    <div id="game-header">
+      <div>
+        <div id="game-title">WORD HUNTER</div>
+        <div class="g-meta" id="game-q-counter">Question 1 of 5</div>
+      </div>
+      <button id="game-close" onclick="closeGame()">CLOSE ✕</button>
+    </div>
+    <div id="game-body"></div>
+    <div id="progress-dots"></div>
+    <button id="continue-btn" onclick="nextQuestion()">CONTINUE →</button>
+  </div>
+</div>
+
+<!-- RESULTS -->
+<div id="results-screen">
+  <div class="result-big" id="result-grade">PERFECT</div>
+  <div id="result-msg">ROUND COMPLETE</div>
+  <div id="result-xp">+25 XP EARNED</div>
+  <div class="result-btns">
+    <button class="result-btn primary" onclick="playAgain()">PLAY AGAIN</button>
+    <button class="result-btn secondary" onclick="backToMap()">CHOOSE MISSION</button>
+  </div>
+</div>
+
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+<script>
+// ═══════════════════════════════════════════════
+//  LANGUAGE DATA
+// ═══════════════════════════════════════════════
+const LANGS = {
+  jp:{name:'Japanese',flag:'🇯🇵',native:'日本語',color:0xD4463A,
+    vocab:[
+      {glyph:'猫',rom:'neko',mean:'Cat',hint:'A beloved pet in Japan'},
+      {glyph:'犬',rom:'inu',mean:'Dog',hint:'Man\'s best friend'},
+      {glyph:'水',rom:'mizu',mean:'Water',hint:'Essential for life 💧'},
+      {glyph:'火',rom:'hi',mean:'Fire',hint:'Element of warmth 🔥'},
+      {glyph:'山',rom:'yama',mean:'Mountain',hint:'Japan has Mt. Fuji 🗻'},
+      {glyph:'海',rom:'umi',mean:'Sea',hint:'Japan is an island nation 🌊'},
+      {glyph:'花',rom:'hana',mean:'Flower',hint:'Sakura — Japan\'s symbol 🌸'},
+      {glyph:'月',rom:'tsuki',mean:'Moon',hint:'Celebrated each autumn 🌕'},
+      {glyph:'日',rom:'nichi',mean:'Sun / Day',hint:'Also means Japan itself 🌞'},
+      {glyph:'空',rom:'sora',mean:'Sky',hint:'Vast and limitless ☁️'},
+    ],
+    alphabet:[
+      {char:'あ',rom:'a'},{char:'い',rom:'i'},{char:'う',rom:'u'},{char:'え',rom:'e'},{char:'お',rom:'o'},
+      {char:'か',rom:'ka'},{char:'き',rom:'ki'},{char:'く',rom:'ku'},{char:'け',rom:'ke'},{char:'こ',rom:'ko'},
+      {char:'さ',rom:'sa'},{char:'し',rom:'shi'},{char:'す',rom:'su'},{char:'せ',rom:'se'},{char:'そ',rom:'so'},
+      {char:'た',rom:'ta'},{char:'ち',rom:'chi'},{char:'つ',rom:'tsu'},{char:'て',rom:'te'},{char:'と',rom:'to'},
+      {char:'な',rom:'na'},{char:'に',rom:'ni'},{char:'ぬ',rom:'nu'},{char:'ね',rom:'ne'},{char:'の',rom:'no'},
+    ],
+    phrases:[
+      {text:'おはようございます',parts:['おはよう','ございます'],meaning:'Good morning'},
+      {text:'ありがとうございます',parts:['ありがとう','ございます'],meaning:'Thank you very much'},
+      {text:'よろしくおねがいします',parts:['よろしく','おねがい','します'],meaning:'Nice to meet you'},
+    ],
+    culture:[
+      {emoji:'🍣',fact:'Sushi originated as a way to preserve fish using fermented rice. Modern sushi with fresh fish was developed in Edo (Tokyo) in the early 1800s.',q:'What is the Japanese word for raw fish on rice?',opts:['Ramen','Sashimi','Nigiri','Tempura'],ans:2},
+      {emoji:'⛩️',fact:'Torii gates mark the entrance to Shinto shrines. The famous floating torii of Itsukushima appears to float on water at high tide.',q:'What do Torii gates mark?',opts:['City boundaries','Shrine entrances','Rice fields','Fishing areas'],ans:1},
+      {emoji:'🌸',fact:'Cherry blossoms (sakura) bloom for only about two weeks each spring. The Japanese tradition of viewing them is called "hanami" — flower viewing.',q:'What is the Japanese tradition of viewing cherry blossoms called?',opts:['Ikebana','Origami','Hanami','Matsuri'],ans:2},
+      {emoji:'🥋',fact:'Judo was created in Japan in 1882 by Jigoro Kano. It became the first Asian martial art included in the Olympic Games, in 1964 — in Tokyo.',q:'Who created Judo?',opts:['Bruce Lee','Jigoro Kano','Miyamoto Musashi','Funakoshi Gichin'],ans:1},
+      {emoji:'🎌',fact:'Japan is called Nihon or Nippon, meaning "origin of the sun." The red circle on the flag represents the sun rising over the Pacific Ocean.',q:'What does the red circle on Japan\'s flag represent?',opts:['The emperor\'s seal','Mount Fuji','The rising sun','A samurai crest'],ans:2},
+    ],
+    writeChars:['あ','い','う','か','さ','た','な','は'],
+    story:{title:'東京の朝 — Morning in Tokyo',lines:[
+      {native:'田中さんは東京に住んでいます。',eng:'Tanaka-san lives in Tokyo.',words:{'東京':'Tokyo','住んでいます':'lives'}},
+      {native:'毎朝、彼女は緑茶を飲みます。',eng:'Every morning, she drinks green tea.',words:{'毎朝':'every morning','緑茶':'green tea','飲みます':'drinks'}},
+      {native:'それから、電車で会社に行きます。',eng:'Then she goes to work by train.',words:{'電車':'train','会社':'company','行きます':'goes'}},
+    ]}
+  },
+  ar:{name:'Arabic',flag:'🇸🇦',native:'العربية',color:0x2A7D4F,
+    vocab:[
+      {glyph:'كتاب',rom:'kitāb',mean:'Book',hint:'Knowledge is power 📚'},
+      {glyph:'بيت',rom:'bayt',mean:'House',hint:'Home sweet home 🏠'},
+      {glyph:'ماء',rom:'māʾ',mean:'Water',hint:'Life\'s essence 💧'},
+      {glyph:'شمس',rom:'shams',mean:'Sun',hint:'Desert sunshine ☀️'},
+      {glyph:'قمر',rom:'qamar',mean:'Moon',hint:'The Islamic crescent 🌙'},
+      {glyph:'نجم',rom:'najm',mean:'Star',hint:'Desert night skies ⭐'},
+      {glyph:'حب',rom:'ḥubb',mean:'Love',hint:'A universal feeling ❤️'},
+      {glyph:'علم',rom:'ʿilm',mean:'Knowledge',hint:'Highly valued in Islam 🎓'},
+      {glyph:'باب',rom:'bāb',mean:'Door',hint:'Gateway to new worlds 🚪'},
+      {glyph:'وقت',rom:'waqt',mean:'Time',hint:'Time is precious ⏳'},
+    ],
+    alphabet:[
+      {char:'ا',rom:'alef'},{char:'ب',rom:'ba'},{char:'ت',rom:'ta'},{char:'ث',rom:'tha'},{char:'ج',rom:'jeem'},
+      {char:'ح',rom:'ha'},{char:'خ',rom:'kha'},{char:'د',rom:'dal'},{char:'ذ',rom:'dhal'},{char:'ر',rom:'ra'},
+      {char:'ز',rom:'zay'},{char:'س',rom:'seen'},{char:'ش',rom:'sheen'},{char:'ص',rom:'sad'},{char:'ض',rom:'dad'},
+      {char:'ط',rom:'tah'},{char:'ظ',rom:'zah'},{char:'ع',rom:'ain'},{char:'غ',rom:'ghain'},{char:'ف',rom:'fa'},
+    ],
+    phrases:[
+      {text:'مرحبا كيف حالك',parts:['مرحبا','كيف','حالك'],meaning:'Hello, how are you?'},
+      {text:'انا بخير شكرا',parts:['انا','بخير','شكرا'],meaning:'I am fine, thank you'},
+      {text:'اين المدرسة',parts:['اين','المدرسة'],meaning:'Where is the school?'},
+    ],
+    culture:[
+      {emoji:'☕',fact:'Qahwa (Arabic coffee) is flavored with cardamom and saffron. Offering it to guests is a sign of generosity and hospitality across the Arab world.',q:'What spice is traditionally used to flavor Arabic coffee?',opts:['Cinnamon','Cardamom','Cumin','Turmeric'],ans:1},
+      {emoji:'🕌',fact:'The call to prayer (Adhan) rings out 5 times daily across the Arab world. It begins with "Allahu Akbar" and marks the rhythm of daily life.',q:'How many times per day is the Adhan called?',opts:['3','4','5','7'],ans:2},
+      {emoji:'🏜️',fact:'The Bedouin are nomadic Arab peoples of the desert. Renowned for hospitality, they traditionally serve guests with coffee and dates as a welcome.',q:'What are Bedouin traditionally known for?',opts:['Seafaring','Desert nomadism','Mountain farming','City trading'],ans:1},
+      {emoji:'📜',fact:'Arabic is written right to left and is the liturgical language of Islam. It is spoken by over 400 million people across 22 countries.',q:'In which direction is Arabic written?',opts:['Left to right','Right to left','Top to bottom','Bottom to top'],ans:1},
+      {emoji:'🌙',fact:'Ramadan is the ninth month of the Islamic lunar calendar. Muslims fast from dawn to sunset for 30 days, breaking fast with Iftar.',q:'What is the meal that breaks the Ramadan fast called?',opts:['Suhoor','Iftar','Zakat','Eid'],ans:1},
+    ],
+    writeChars:['ا','ب','ت','ج','ر','س','ع','ف'],
+    story:{title:'في المقهى — At the Café',lines:[
+      {native:'أحمد يجلس في المقهى.',eng:'Ahmed sits in the café.',words:{'يجلس':'sits','المقهى':'the café'}},
+      {native:'يشرب قهوة عربية.',eng:'He drinks Arabic coffee.',words:{'يشرب':'drinks','قهوة':'coffee','عربية':'Arabic'}},
+      {native:'الجو جميل اليوم.',eng:'The weather is beautiful today.',words:{'الجو':'the weather','جميل':'beautiful','اليوم':'today'}},
+    ]}
+  },
+  fr:{name:'French',flag:'🇫🇷',native:'Français',color:0x1B4FDB,
+    vocab:[
+      {glyph:'Lumière',rom:'lym-yehr',mean:'Light',hint:'Paris — City of Light 💡'},
+      {glyph:'Amour',rom:'ah-moor',mean:'Love',hint:'The language of love ❤️'},
+      {glyph:'Liberté',rom:'lee-ber-tay',mean:'Freedom',hint:'Liberté, Égalité, Fraternité 🗽'},
+      {glyph:'Maison',rom:'meh-zon',mean:'House',hint:'My castle is my home 🏠'},
+      {glyph:'Soleil',rom:'so-lay',mean:'Sun',hint:'Mediterranean sunshine ☀️'},
+      {glyph:'Étoile',rom:'ay-twal',mean:'Star',hint:'Star-shaped Paris roads ⭐'},
+      {glyph:'Forêt',rom:'fo-ray',mean:'Forest',hint:'France has vast forests 🌲'},
+      {glyph:'Rêve',rom:'rehv',mean:'Dream',hint:'La vie est un rêve 💭'},
+      {glyph:'Mer',rom:'mehr',mean:'Sea',hint:'La mer — Côte d\'Azur 🌊'},
+      {glyph:'Chemin',rom:'shuh-man',mean:'Path',hint:'Every journey starts here 🛤️'},
+    ],
+    alphabet:[
+      {char:'À',rom:'à (grave)'},{char:'Â',rom:'â (circ.)'},{char:'Ç',rom:'ç (cedilla)'},{char:'É',rom:'é (acute)'},{char:'È',rom:'è (grave)'},
+      {char:'Ê',rom:'ê (circ.)'},{char:'Ë',rom:'ë (umlaut)'},{char:'Î',rom:'î (circ.)'},{char:'Ï',rom:'ï (umlaut)'},{char:'Ô',rom:'ô (circ.)'},
+      {char:'Ù',rom:'ù (grave)'},{char:'Û',rom:'û (circ.)'},{char:'Ü',rom:'ü (umlaut)'},{char:'Œ',rom:'œ (ligature)'},{char:'Æ',rom:'æ (ligature)'},
+    ],
+    phrases:[
+      {text:'Bonjour comment allez vous',parts:['Bonjour','comment','allez','vous'],meaning:'Hello, how are you?'},
+      {text:'Je ne comprends pas',parts:['Je','ne','comprends','pas'],meaning:'I do not understand'},
+      {text:'Ou est la gare',parts:['Ou','est','la','gare'],meaning:'Where is the train station?'},
+    ],
+    culture:[
+      {emoji:'🥐',fact:'The croissant was actually invented in Austria as the kipferl, brought to France in 1838. French bakers perfected the layered buttery dough.',q:'Where was the croissant originally invented?',opts:['France','Italy','Austria','Belgium'],ans:2},
+      {emoji:'🗼',fact:'The Eiffel Tower was meant to be demolished after 20 years. It was saved because it served as a vital radio transmission tower for the military.',q:'Why was the Eiffel Tower saved from demolition?',opts:['Tourism revenue','Radio transmissions','Royal decree','Art exhibition'],ans:1},
+      {emoji:'🍷',fact:'France is the world\'s top wine producer and exporter. The French wine classification system, established in 1855, is still used today.',q:'What year was the French wine classification system established?',opts:['1789','1855','1900','1920'],ans:1},
+      {emoji:'🎨',fact:'The Louvre in Paris is the world\'s most visited museum. It houses over 38,000 works including the Mona Lisa and Venus de Milo.',q:'What famous painting is housed in the Louvre?',opts:['The Last Supper','The Starry Night','Mona Lisa','The Persistence of Memory'],ans:2},
+      {emoji:'🧅',fact:'French cuisine is a UNESCO Intangible Cultural Heritage. The French meal is famous for its multiple courses: entrée, plat principal, fromage, dessert.',q:'What is the traditional French word for the main course?',opts:['Entrée','Plat principal','Dessert','Apéritif'],ans:1},
+    ],
+    writeChars:['À','Ç','É','Œ','Ê','Î','Ù','Û'],
+    story:{title:'Une matinée à Paris — A Morning in Paris',lines:[
+      {native:'Marie se réveille tôt le matin.',eng:'Marie wakes up early in the morning.',words:{'réveille':'wakes up','tôt':'early','matin':'morning'}},
+      {native:'Elle boit un café au lait.',eng:'She drinks a coffee with milk.',words:{'boit':'drinks','café':'coffee','lait':'milk'}},
+      {native:'Puis elle marche vers la boulangerie.',eng:'Then she walks to the bakery.',words:{'marche':'walks','boulangerie':'bakery','vers':'towards'}},
+    ]}
+  },
+  hi:{name:'Hindi',flag:'🇮🇳',native:'हिन्दी',color:0xFF8C00,
+    vocab:[
+      {glyph:'नमस्ते',rom:'namaste',mean:'Hello',hint:'A greeting and a bow 🙏'},
+      {glyph:'पानी',rom:'pānī',mean:'Water',hint:'Life\'s necessity 💧'},
+      {glyph:'खाना',rom:'khānā',mean:'Food',hint:'Indian cuisine is vibrant 🍛'},
+      {glyph:'प्यार',rom:'pyār',mean:'Love',hint:'Bollywood loves this word ❤️'},
+      {glyph:'घर',rom:'ghar',mean:'Home',hint:'Where the heart is 🏠'},
+      {glyph:'दोस्त',rom:'dost',mean:'Friend',hint:'Also called yaar 🤝'},
+      {glyph:'सपना',rom:'sapnā',mean:'Dream',hint:'Follow your sapna 💭'},
+      {glyph:'रंग',rom:'rang',mean:'Color',hint:'Holi — festival of colors 🎨'},
+      {glyph:'संगीत',rom:'saṅgīt',mean:'Music',hint:'Classical Indian music 🎵'},
+      {glyph:'आकाश',rom:'ākāś',mean:'Sky',hint:'Vast and infinite ☁️'},
+    ],
+    alphabet:[
+      {char:'अ',rom:'a'},{char:'आ',rom:'aa'},{char:'इ',rom:'i'},{char:'ई',rom:'ee'},{char:'उ',rom:'u'},
+      {char:'ऊ',rom:'oo'},{char:'ए',rom:'e'},{char:'ऐ',rom:'ai'},{char:'ओ',rom:'o'},{char:'औ',rom:'au'},
+      {char:'क',rom:'ka'},{char:'ख',rom:'kha'},{char:'ग',rom:'ga'},{char:'घ',rom:'gha'},{char:'च',rom:'cha'},
+      {char:'छ',rom:'chha'},{char:'ज',rom:'ja'},{char:'झ',rom:'jha'},{char:'त',rom:'ta'},{char:'द',rom:'da'},
+    ],
+    phrases:[
+      {text:'आप कैसे हैं',parts:['आप','कैसे','हैं'],meaning:'How are you?'},
+      {text:'मेरा नाम क्या है',parts:['मेरा','नाम','क्या','है'],meaning:'What is my name?'},
+      {text:'मुझे भूख लगी है',parts:['मुझे','भूख','लगी','है'],meaning:'I am hungry'},
+    ],
+    culture:[
+      {emoji:'🎆',fact:'Diwali, the Festival of Lights, celebrates the return of Rama to Ayodhya. Homes are lit with clay oil lamps called diyas and fireworks fill the sky.',q:'What are the small clay oil lamps used during Diwali called?',opts:['Agni','Diyas','Surya','Kama'],ans:1},
+      {emoji:'🐄',fact:'Cows are sacred in Hinduism and roam freely even in cities. They represent Kamadhenu, the divine mother of all cattle in Hindu mythology.',q:'Why are cows sacred in India?',opts:['They are rare','Economic value only','Divine symbol in Hinduism','Ancient law only'],ans:2},
+      {emoji:'🏏',fact:'Cricket is India\'s most popular sport, with over a billion fans. The Indian Premier League (IPL) is one of the wealthiest sports leagues in the world.',q:'What is India\'s most popular sport?',opts:['Football','Hockey','Cricket','Kabaddi'],ans:2},
+      {emoji:'🧘',fact:'Yoga originated in ancient India over 5,000 years ago. The word yoga comes from Sanskrit yuj meaning to unite the mind, body, and spirit.',q:'What does the Sanskrit word "yoga" mean?',opts:['Stretch','To unite','Balance','Breathe'],ans:1},
+      {emoji:'🏛️',fact:'The Taj Mahal was built by Mughal emperor Shah Jahan as a mausoleum for his wife Mumtaz Mahal. It took over 20 years and 20,000 workers to complete.',q:'For whom was the Taj Mahal built?',opts:['A queen named Sita','Mumtaz Mahal','Empress Noor Jahan','Princess Padmavati'],ans:1},
+    ],
+    writeChars:['अ','आ','क','ग','न','प','म','र'],
+    story:{title:'सुबह की चाय — Morning Tea',lines:[
+      {native:'राज सुबह उठता है।',eng:'Raj wakes up in the morning.',words:{'सुबह':'morning','उठता है':'wakes up'}},
+      {native:'वह चाय पीता है।',eng:'He drinks tea.',words:{'चाय':'tea','पीता है':'drinks'}},
+      {native:'आज मौसम अच्छा है।',eng:'Today the weather is nice.',words:{'आज':'today','मौसम':'weather','अच्छा':'nice'}},
+    ]}
+  },
+  zh:{name:'Mandarin',flag:'🇨🇳',native:'普通话',color:0xCC2200,
+    vocab:[
+      {glyph:'你好',rom:'nǐ hǎo',mean:'Hello',hint:'The universal greeting 👋'},
+      {glyph:'水',rom:'shuǐ',mean:'Water',hint:'Life\'s essence 💧'},
+      {glyph:'火',rom:'huǒ',mean:'Fire',hint:'Warm and powerful 🔥'},
+      {glyph:'山',rom:'shān',mean:'Mountain',hint:'China has many ranges 🏔️'},
+      {glyph:'龙',rom:'lóng',mean:'Dragon',hint:'Symbol of China 🐉'},
+      {glyph:'茶',rom:'chá',mean:'Tea',hint:'China invented tea ☕'},
+      {glyph:'书',rom:'shū',mean:'Book',hint:'Love of learning 📚'},
+      {glyph:'月',rom:'yuè',mean:'Moon',hint:'Mid-Autumn Festival 🌕'},
+      {glyph:'心',rom:'xīn',mean:'Heart',hint:'Heart of everything ❤️'},
+      {glyph:'福',rom:'fú',mean:'Fortune',hint:'Hung upside-down for luck 🏮'},
+    ],
+    alphabet:[
+      {char:'一',rom:'yī — 1'},{char:'二',rom:'èr — 2'},{char:'三',rom:'sān — 3'},{char:'四',rom:'sì — 4'},{char:'五',rom:'wǔ — 5'},
+      {char:'人',rom:'rén — person'},{char:'大',rom:'dà — big'},{char:'小',rom:'xiǎo — small'},{char:'上',rom:'shàng — up'},{char:'下',rom:'xià — down'},
+      {char:'日',rom:'rì — sun'},{char:'月',rom:'yuè — moon'},{char:'水',rom:'shuǐ — water'},{char:'火',rom:'huǒ — fire'},{char:'木',rom:'mù — wood'},
+      {char:'口',rom:'kǒu — mouth'},{char:'手',rom:'shǒu — hand'},{char:'目',rom:'mù — eye'},{char:'耳',rom:'ěr — ear'},{char:'心',rom:'xīn — heart'},
+    ],
+    phrases:[
+      {text:'你好你叫什么名字',parts:['你好','你叫','什么','名字'],meaning:'Hello, what is your name?'},
+      {text:'我不会说中文',parts:['我','不会','说','中文'],meaning:'I cannot speak Chinese'},
+      {text:'这个多少钱',parts:['这个','多少','钱'],meaning:'How much does this cost?'},
+    ],
+    culture:[
+      {emoji:'🥢',fact:'Chopsticks have been used in China for over 5,000 years. Originally for cooking, they became eating utensils around 500 CE as food was cut into smaller pieces.',q:'How long have chopsticks been used in China?',opts:['500 years','1,000 years','3,000 years','5,000 years'],ans:3},
+      {emoji:'🧧',fact:'Red envelopes (hóngbāo) contain money given during Chinese New Year. Red represents luck and prosperity in Chinese culture.',q:'What do red envelopes symbolize?',opts:['Danger','Luck and prosperity','Mourning','Marriage only'],ans:1},
+      {emoji:'🐉',fact:'The dragon in Chinese culture is a benevolent symbol of power, strength, and good luck. Unlike Western dragons, it is not associated with evil.',q:'What does the dragon symbolize in Chinese culture?',opts:['Evil and chaos','Power and good luck','War and death','The emperor only'],ans:1},
+      {emoji:'🌕',fact:'The Mid-Autumn Festival is celebrated on the 15th day of the 8th lunar month. Families reunite, admire the full moon, and eat mooncakes.',q:'What is eaten during the Mid-Autumn Festival?',opts:['Dumplings','Spring rolls','Mooncakes','Rice cakes'],ans:2},
+      {emoji:'🏯',fact:'The Great Wall of China stretches over 21,000 km. Built over many centuries, it was designed to protect Chinese states from nomadic invasions from the north.',q:'Approximately how long is the Great Wall of China?',opts:['5,000 km','10,000 km','21,000 km','50,000 km'],ans:2},
+    ],
+    writeChars:['一','人','大','日','月','口','手','心'],
+    story:{title:'早上好 — Good Morning',lines:[
+      {native:'李明早上起床。',eng:'Li Ming gets up in the morning.',words:{'早上':'morning','起床':'get up'}},
+      {native:'他喝绿茶。',eng:'He drinks green tea.',words:{'喝':'drinks','绿茶':'green tea'}},
+      {native:'然后他去上学。',eng:'Then he goes to school.',words:{'然后':'then','去':'go','上学':'to school'}},
+    ]}
+  },
+  ru:{name:'Russian',flag:'🇷🇺',native:'Русский',color:0x8B1A1A,
+    vocab:[
+      {glyph:'Привет',rom:'privet',mean:'Hi',hint:'Casual hello 👋'},
+      {glyph:'Вода',rom:'voda',mean:'Water',hint:'Vodka means little water 💧'},
+      {glyph:'Огонь',rom:'ogon',mean:'Fire',hint:'Warming cold nights 🔥'},
+      {glyph:'Лес',rom:'les',mean:'Forest',hint:'Russia has vast taiga 🌲'},
+      {glyph:'Медведь',rom:'medved',mean:'Bear',hint:'Symbol of Russia 🐻'},
+      {glyph:'Небо',rom:'nebo',mean:'Sky',hint:'Vast Russian skies ☁️'},
+      {glyph:'Душа',rom:'dusha',mean:'Soul',hint:'The Russian soul concept 🕊️'},
+      {glyph:'Снег',rom:'sneg',mean:'Snow',hint:'Famous Russian winters ❄️'},
+      {glyph:'Мечта',rom:'mechta',mean:'Dream',hint:'Every Russian has a dream 💭'},
+      {glyph:'Звезда',rom:'zvezda',mean:'Star',hint:'Stars of the night sky ⭐'},
+    ],
+    alphabet:[
+      {char:'А',rom:'A'},{char:'Б',rom:'B'},{char:'В',rom:'V'},{char:'Г',rom:'G'},{char:'Д',rom:'D'},
+      {char:'Е',rom:'YE'},{char:'Ж',rom:'ZH'},{char:'З',rom:'Z'},{char:'И',rom:'I'},{char:'К',rom:'K'},
+      {char:'Л',rom:'L'},{char:'М',rom:'M'},{char:'Н',rom:'N'},{char:'О',rom:'O'},{char:'П',rom:'P'},
+      {char:'Р',rom:'R'},{char:'С',rom:'S'},{char:'Т',rom:'T'},{char:'У',rom:'U'},{char:'Ф',rom:'F'},
+    ],
+    phrases:[
+      {text:'Как тебя зовут',parts:['Как','тебя','зовут'],meaning:'What is your name?'},
+      {text:'Я не говорю по русски',parts:['Я','не говорю','по','русски'],meaning:'I do not speak Russian'},
+      {text:'Где находится метро',parts:['Где','находится','метро'],meaning:'Where is the metro?'},
+    ],
+    culture:[
+      {emoji:'🎭',fact:'The Bolshoi Theatre in Moscow was founded in 1776 and is one of the world\'s greatest opera and ballet stages. Bolshoi means big in Russian.',q:'What does "Bolshoi" mean in Russian?',opts:['Beautiful','Big','Ancient','Royal'],ans:1},
+      {emoji:'🥘',fact:'Borscht is a beet soup popular across Eastern Europe and Russia. It is served hot or cold, traditionally with a dollop of sour cream (smetana).',q:'What gives borscht its distinctive red color?',opts:['Tomatoes','Red peppers','Beets','Red cabbage'],ans:2},
+      {emoji:'🚀',fact:'The Soviet Union launched Sputnik in 1957, the first artificial satellite. In 1961, Yuri Gagarin became the first human to travel to space.',q:'Who was the first human in space?',opts:['Neil Armstrong','Buzz Aldrin','Yuri Gagarin','Valentina Tereshkova'],ans:2},
+      {emoji:'🌲',fact:'Siberia covers about 77% of Russia\'s territory and contains the world\'s largest forest (taiga). Lake Baikal there holds 20% of Earth\'s fresh water.',q:'What percentage of Earth\'s fresh water does Lake Baikal hold?',opts:['5%','10%','20%','35%'],ans:2},
+      {emoji:'🎨',fact:'Russia has a rich artistic tradition. The Hermitage Museum in St. Petersburg houses over 3 million works of art and is one of the largest museums on Earth.',q:'In which city is the Hermitage Museum located?',opts:['Moscow','St. Petersburg','Kazan','Vladivostok'],ans:1},
+    ],
+    writeChars:['А','Б','Д','Ж','З','Р','Ф','Я'],
+    story:{title:'Утро в Москве — Morning in Moscow',lines:[
+      {native:'Иван просыпается рано.',eng:'Ivan wakes up early.',words:{'просыпается':'wakes up','рано':'early'}},
+      {native:'Он пьёт чай с молоком.',eng:'He drinks tea with milk.',words:{'пьёт':'drinks','чай':'tea','молоком':'milk'}},
+      {native:'Потом он едет на работу.',eng:'Then he goes to work.',words:{'Потом':'then','едет':'goes','работу':'work'}},
+    ]}
+  }
+};
+
+// Instruction configs
+const INSTR_DATA = {
+  vocab:{icon:'📖',title:'WORD HUNTER',steps:['A character or word appears in your target language with its pronunciation.','Four possible meanings are shown — choose the correct one.','You earn +10 XP for each correct answer.','Complete all 5 rounds to finish the mission.'],tip:'💡 Read the romanization (pronunciation guide) under the glyph for a hint.'},
+  alpha:{icon:'🔤',title:'SCRIPT LAB',steps:['A romanized sound is shown at the top (e.g. "ka", "sheen", "ra").','A grid of characters from the alphabet appears below.','Tap the character that matches that sound.','Complete all 5 rounds to finish the mission.'],tip:'💡 Even a wrong answer teaches you — the correct answer is revealed in green.'},
+  culture:{icon:'🏛️',title:'CULTURE QUEST',steps:['Read the cultural fact about the country carefully.','A trivia question appears below the fact.','Choose the correct answer from the four options.','Complete all 5 rounds to finish the mission.'],tip:'💡 The facts themselves often contain the answer — read closely!'},
+  phrase:{icon:'💬',title:'PHRASE BUILDER',steps:['The English meaning of a sentence is shown at the top.','Word chips appear in scrambled order below.','Click the chips in the correct order to build the sentence.','Click a placed word to remove it and try again, then press CHECK.'],tip:'💡 Think about the sentence structure of your target language — it may differ from English.'},
+  write:{icon:'✍️',title:'STROKE ORDER',steps:['A character is shown above with a faint ghost guide beneath.','Use your mouse (click and drag) to trace the character.','Try to follow the shape of the ghost guide.','Press SUBMIT when done, or CLEAR to start over.'],tip:'💡 No perfect recognition here — just practice the muscle memory of the shape.'},
+  story:{icon:'📚',title:'STORY MODE',steps:['Read the bilingual mini-story line by line.','Each line shows the native language and English translation.','Words highlighted in yellow have translations — hover to see them.','A glossary of key words is shown below each line.'],tip:'💡 Try reading the native line first, then check the English — challenge yourself!'},
+};
+
+// ═══════════════════════════════════════════════
+//  STATE
+// ═══════════════════════════════════════════════
+let currentLang = 'jp';
+let xp = 0, streak = 0;
+let currentGame = null;
+let questionIndex = 0, score = 0;
+const QUESTIONS = 5;
+const progress = {vocab:0,alpha:0,culture:0,phrase:0,write:0,story:0};
+let answeredThisQ = false;
+let drawCtx = null, isDrawing = false, lastX = 0, lastY = 0;
+let assembled = [];
+
+// ═══════════════════════════════════════════════
+//  THREE.JS WORLD
+// ═══════════════════════════════════════════════
+const worldCanvas = document.getElementById('world');
+const renderer = new THREE.WebGLRenderer({canvas:worldCanvas,antialias:true});
+renderer.setPixelRatio(Math.min(devicePixelRatio,2));
+renderer.setSize(innerWidth,innerHeight);
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x070709);
+scene.fog = new THREE.FogExp2(0x070709,0.018);
+
+const camera = new THREE.PerspectiveCamera(60,innerWidth/innerHeight,0.1,500);
+camera.position.set(0,10,34);
+
+scene.add(new THREE.AmbientLight(0x223,1.2));
+const sun = new THREE.DirectionalLight(0xfff4e0,2.5);
+sun.position.set(20,30,10); scene.add(sun);
+const fill = new THREE.PointLight(0x1B4FDB,3,80);
+fill.position.set(-20,10,0); scene.add(fill);
+
+// Ground grid
+const ground = new THREE.Mesh(
+  new THREE.PlaneGeometry(200,200,40,40),
+  new THREE.MeshStandardMaterial({color:0x0a0a0f,wireframe:true,opacity:.25,transparent:true})
+);
+ground.rotation.x = -Math.PI/2; ground.position.y = -5;
+scene.add(ground);
+
+// Islands
+const ISLAND_DEFS = [
+  {lang:'jp',pos:[-12,0,0],color:0xD4463A},
+  {lang:'ar',pos:[12,0,0],color:0x2A7D4F},
+  {lang:'fr',pos:[0,0,-14],color:0x1B4FDB},
+  {lang:'hi',pos:[-8,0,-10],color:0xFF8C00},
+  {lang:'zh',pos:[8,0,-10],color:0xCC2200},
+  {lang:'ru',pos:[0,0,13],color:0x8B1A1A},
+];
+
+const islands = [];
+const floaters = [];
+
+ISLAND_DEFS.forEach(({lang,pos,color})=>{
+  const g = new THREE.Group();
+  g.position.set(...pos);
+
+  // Base
+  g.add(Object.assign(new THREE.Mesh(
+    new THREE.CylinderGeometry(3.5,2.8,1.2,6),
+    new THREE.MeshStandardMaterial({color,roughness:.7,metalness:.2})
+  ),{position:{x:0,y:-0.8,z:0}}));
+
+  // Tower
+  const tower = new THREE.Mesh(
+    new THREE.CylinderGeometry(0.15,0.4,4,6),
+    new THREE.MeshStandardMaterial({color,roughness:.3,metalness:.6,emissive:new THREE.Color(color),emissiveIntensity:.3})
+  );
+  tower.position.y = 1.8; g.add(tower);
+
+  // Top sphere
+  const top = new THREE.Mesh(
+    new THREE.SphereGeometry(0.5,16,16),
+    new THREE.MeshStandardMaterial({color,emissive:new THREE.Color(color),emissiveIntensity:.9,roughness:.1})
+  );
+  top.position.y = 4.2; g.add(top);
+
+  // Ring
+  const ring = new THREE.Mesh(
+    new THREE.TorusGeometry(1.2,0.05,8,32),
+    new THREE.MeshStandardMaterial({color,emissive:new THREE.Color(color),emissiveIntensity:.6})
+  );
+  ring.position.y = 5.2; g.add(ring);
+
+  // Light
+  const pl = new THREE.PointLight(color,2,14); pl.position.y=4; g.add(pl);
+
+  // Hit sphere
+  const hit = new THREE.Mesh(
+    new THREE.SphereGeometry(3.8,8,8),
+    new THREE.MeshBasicMaterial({visible:false})
+  );
+  hit.userData = {lang,isIsland:true}; g.add(hit);
+
+  scene.add(g);
+  islands.push({group:g,lang,top,ring,pl,color});
+
+  // Floating glyph label
+  const cv = document.createElement('canvas'); cv.width=cv.height=128;
+  const ctx2 = cv.getContext('2d');
+  ctx2.fillStyle='rgba(0,0,0,0)'; ctx2.fillRect(0,0,128,128);
+  ctx2.fillStyle='#F0EDE2';
+  ctx2.font='56px "Noto Sans JP","Noto Sans Arabic","Noto Sans Devanagari","Noto Sans",serif';
+  ctx2.textAlign='center'; ctx2.textBaseline='middle';
+  const sample = LANGS[lang].vocab[0];
+  ctx2.fillText(sample.glyph[0],64,66);
+  const tex = new THREE.CanvasTexture(cv);
+  const sprite = new THREE.Sprite(new THREE.SpriteMaterial({map:tex,transparent:true,opacity:.75}));
+  sprite.scale.setScalar(2.5);
+  sprite.position.set(...pos); sprite.position.y += 7.5;
+  scene.add(sprite);
+  floaters.push({sprite,baseY:pos[1]+7.5});
+
+  // Flag label
+  const cv2 = document.createElement('canvas'); cv2.width=256; cv2.height=80;
+  const ctx3 = cv2.getContext('2d');
+  ctx3.fillStyle='rgba(0,0,0,0)'; ctx3.fillRect(0,0,256,80);
+  ctx3.fillStyle='rgba(240,237,226,0.6)';
+  ctx3.font='bold 18px "Space Mono",monospace';
+  ctx3.textAlign='center'; ctx3.textBaseline='middle';
+  ctx3.fillText(LANGS[lang].name.toUpperCase(), 128, 32);
+  ctx3.fillStyle='rgba(240,237,226,0.3)';
+  ctx3.font='14px "Noto Sans JP","Noto Sans Arabic","Noto Sans",serif';
+  ctx3.fillText(LANGS[lang].native, 128, 56);
+  const tex2 = new THREE.CanvasTexture(cv2);
+  const label = new THREE.Sprite(new THREE.SpriteMaterial({map:tex2,transparent:true,opacity:.8}));
+  label.scale.set(4,1.25,1);
+  label.position.set(...pos); label.position.y += 9.5;
+  scene.add(label);
+});
+
+// Connections
+const lineMat = new THREE.LineBasicMaterial({color:0x1a1a2e,transparent:true,opacity:.5});
+for(let i=0;i<ISLAND_DEFS.length;i++){
+  for(let j=i+1;j<ISLAND_DEFS.length;j++){
+    const a=ISLAND_DEFS[i].pos, b=ISLAND_DEFS[j].pos;
+    scene.add(new THREE.Line(
+      new THREE.BufferGeometry().setFromPoints([new THREE.Vector3(...a),new THREE.Vector3(...b)]),
+      lineMat
+    ));
+  }
+}
+
+// Stars
+(()=>{
+  const cnt=1500,geo=new THREE.BufferGeometry();
+  const pos=new Float32Array(cnt*3);
+  for(let i=0;i<cnt;i++){pos[i*3]=(Math.random()-.5)*300;pos[i*3+1]=Math.random()*100+10;pos[i*3+2]=(Math.random()-.5)*300;}
+  geo.setAttribute('position',new THREE.BufferAttribute(pos,3));
+  scene.add(new THREE.Points(geo,new THREE.PointsMaterial({color:0x888899,size:.2,transparent:true,opacity:.5})));
+})();
+
+// Orbit
+let isDragging=false,prevMX=0,prevMY=0;
+let camRotY=0,tCamRotY=0,camDist=34,tCamDist=34,camRotX=0.28,tCamRotX=0.28;
+const mouse = new THREE.Vector2();
+const raycaster = new THREE.Raycaster();
+let hoveredIsland = null;
+
+worldCanvas.addEventListener('mousedown',e=>{isDragging=true;prevMX=e.clientX;prevMY=e.clientY;});
+document.addEventListener('mousemove',e=>{
+  mouse.x=(e.clientX/innerWidth)*2-1;
+  mouse.y=-(e.clientY/innerHeight)*2+1;
+  document.getElementById('cursor').style.left=e.clientX+'px';
+  document.getElementById('cursor').style.top=e.clientY+'px';
+  if(isDragging){
+    tCamRotY+=(e.clientX-prevMX)*0.007;
+    tCamRotX+=(e.clientY-prevMY)*0.004;
+    tCamRotX=Math.max(0.05,Math.min(0.7,tCamRotX));
+    prevMX=e.clientX;prevMY=e.clientY;
+  }
+});
+document.addEventListener('mouseup',()=>isDragging=false);
+worldCanvas.addEventListener('wheel',e=>{
+  tCamDist=Math.max(10,Math.min(60,tCamDist+e.deltaY*.05));
+  e.preventDefault();
+},{passive:false});
+
+worldCanvas.addEventListener('click',()=>{
+  if(hoveredIsland){
+    currentLang = hoveredIsland;
+    document.getElementById('hud-flag').textContent = LANGS[currentLang].flag;
+    document.getElementById('hud-lang').textContent = LANGS[currentLang].name.toUpperCase();
+    openWorldMap();
+  }
+});
+
+function checkWorldHover(){
+  raycaster.setFromCamera(mouse,camera);
+  const hitMeshes=[];
+  islands.forEach(({group})=>group.traverse(c=>{if(c.userData.isIsland)hitMeshes.push(c);}));
+  const hits=raycaster.intersectObjects(hitMeshes);
+  const cursor=document.getElementById('cursor');
+  if(hits.length>0){hoveredIsland=hits[0].object.userData.lang;cursor.classList.add('hover');}
+  else{hoveredIsland=null;cursor.classList.remove('hover');}
+}
+
+// Animation
+const clock = new THREE.Clock();
+function animate(){
+  requestAnimationFrame(animate);
+  const t=clock.getElapsedTime();
+  camRotY+=(tCamRotY-camRotY)*.07;
+  camRotX+=(tCamRotX-camRotX)*.07;
+  camDist+=(tCamDist-camDist)*.07;
+  tCamRotY+=0.0018;
+  camera.position.set(
+    camDist*Math.sin(camRotY)*Math.cos(camRotX),
+    camDist*Math.sin(camRotX),
+    camDist*Math.cos(camRotY)*Math.cos(camRotX)
+  );
+  camera.lookAt(0,1,0);
+  islands.forEach(({group,top,ring,pl},i)=>{
+    group.rotation.y=t*.3+i*1.0;
+    top.position.y=4.2+Math.sin(t*1.5+i)*.18;
+    ring.rotation.z=t*.8+i;
+    pl.intensity=1.5+Math.sin(t*2+i)*.5;
+  });
+  floaters.forEach(({sprite,baseY},i)=>{
+    sprite.position.y=baseY+Math.sin(t*.8+i*1.2)*.4;
+  });
+  checkWorldHover();
+  renderer.render(scene,camera);
+}
+animate();
+window.addEventListener('resize',()=>{
+  camera.aspect=innerWidth/innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(innerWidth,innerHeight);
+});
+
+// ESC key
+document.addEventListener('keydown',e=>{
+  if(e.key==='Escape'){
+    closeGame(); closeMap();
+    document.getElementById('instr-overlay').classList.remove('show');
+  }
+});
+
+// ═══════════════════════════════════════════════
+//  UI
+// ═══════════════════════════════════════════════
+function pickLang(el){
+  document.querySelectorAll('.lang-pill').forEach(p=>p.classList.remove('chosen'));
+  el.classList.add('chosen');
+  currentLang=el.dataset.lang;
+}
+
+function enterWorld(){
+  document.getElementById('intro-screen').classList.add('out');
+  document.getElementById('hud-flag').textContent=LANGS[currentLang].flag;
+  document.getElementById('hud-lang').textContent=LANGS[currentLang].name.toUpperCase();
+  setTimeout(()=>openWorldMap(),1200);
+}
+
+function openWorldMap(){
+  document.getElementById('world-map').classList.add('show');
+  Object.keys(progress).forEach(k=>{
+    const el=document.getElementById('prog-'+k);
+    if(el) el.style.width=progress[k]+'%';
+  });
+}
+
+function closeMap(){
+  document.getElementById('world-map').classList.remove('show');
+}
+
+// ═══════════════════════════════════════════════
+//  INSTRUCTIONS
+// ═══════════════════════════════════════════════
+function showInstructions(type){
+  const d=INSTR_DATA[type];
+  document.getElementById('instr-icon').textContent=d.icon;
+  document.getElementById('instr-title-text').textContent=d.title;
+  document.getElementById('instr-steps').innerHTML=d.steps.map((s,i)=>`<li><span class="instr-num">${i+1}</span><span>${s}</span></li>`).join('');
+  document.getElementById('instr-tip').textContent=d.tip;
+  document.getElementById('instr-overlay').classList.add('show');
+  document.getElementById('instr-overlay').dataset.game=type;
+}
+
+function startFromInstr(){
+  const type=document.getElementById('instr-overlay').dataset.game;
+  document.getElementById('instr-overlay').classList.remove('show');
+  launchGame(type);
+}
+
+// ═══════════════════════════════════════════════
+//  GAME ENGINE
+// ═══════════════════════════════════════════════
+function launchGame(type){
+  currentGame=type; questionIndex=0; score=0;
+  closeMap();
+  document.getElementById('game-panel').classList.add('show');
+  const titles={vocab:'WORD HUNTER',alpha:'SCRIPT LAB',culture:'CULTURE QUEST',phrase:'PHRASE BUILDER',write:'STROKE ORDER',story:'STORY MODE'};
+  document.getElementById('game-title').textContent=titles[type];
+  renderQuestion();
+}
+
+function closeGame(){
+  document.getElementById('game-panel').classList.remove('show');
+  document.getElementById('continue-btn').classList.remove('show');
+  openWorldMap();
+}
+
+function renderQuestion(){
+  answeredThisQ=false;
+  assembled=[];
+  const body=document.getElementById('game-body');
+  const dots=document.getElementById('progress-dots');
+  document.getElementById('continue-btn').classList.remove('show');
+  document.getElementById('game-q-counter').textContent=
+    currentGame==='story'?'Read the story':
+    `Question ${questionIndex+1} of ${QUESTIONS}`;
+
+  dots.innerHTML=Array.from({length:QUESTIONS},(_,i)=>
+    `<div class="prog-dot ${i<questionIndex?'done':i===questionIndex?'current':''}"></div>`
+  ).join('');
+
+  const L=LANGS[currentLang];
+  if(currentGame==='vocab')    renderVocab(body,L);
+  else if(currentGame==='alpha')   renderAlpha(body,L);
+  else if(currentGame==='culture') renderCulture(body,L);
+  else if(currentGame==='phrase')  renderPhrase(body,L);
+  else if(currentGame==='write')   renderWrite(body,L);
+  else if(currentGame==='story')   renderStory(body,L);
+}
+
+// ── VOCAB ──
+function renderVocab(body,L){
+  const pool=shuffleArr([...L.vocab]).slice(0,4);
+  const correct=pool[0];
+  const choices=shuffleArr(pool);
+  // Store correct answer index by data attribute to avoid quote issues
+  body.innerHTML=`
+    <div class="vocab-glyph">${correct.glyph}</div>
+    <div class="vocab-romanji">${correct.rom}</div>
+    <div class="vocab-choices" id="vocab-choices">
+      ${choices.map((it,i)=>`
+        <button class="vocab-choice" data-mean="${escAttr(it.mean)}" data-correct="${escAttr(correct.mean)}">
+          <span class="vc-num">${i+1}</span>
+          <span>${it.mean}</span>
+        </button>`).join('')}
+    </div>
+    <div class="vocab-hint">${correct.hint}</div>`;
+
+  document.querySelectorAll('.vocab-choice').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(answeredThisQ) return;
+      answeredThisQ=true;
+      const chosen=btn.dataset.mean;
+      const correct2=btn.dataset.correct;
+      document.querySelectorAll('.vocab-choice').forEach(b=>b.disabled=true);
+      const isCorrect=chosen===correct2;
+      btn.classList.add(isCorrect?'correct':'wrong');
+      if(!isCorrect){
+        document.querySelectorAll('.vocab-choice').forEach(b=>{
+          if(b.dataset.mean===correct2) b.classList.add('correct');
+        });
+      }
+      handleAnswer(isCorrect);
+    });
+  });
+}
+
+// ── ALPHA ──
+function renderAlpha(body,L){
+  const alpha=L.alphabet;
+  const targetIdx=questionIndex % alpha.length;
+  const target=alpha[targetIdx];
+  const others=shuffleArr(alpha.filter((_,i)=>i!==targetIdx)).slice(0,7);
+  const choices=shuffleArr([target,...others]);
+
+  body.innerHTML=`
+    <div class="alpha-question">Which character sounds like "<span style="color:var(--red)">${target.rom}</span>"?</div>
+    <div class="alpha-grid" id="alpha-grid">
+      ${choices.map(a=>`
+        <div class="alpha-card" data-char="${escAttr(a.char)}" data-correct="${escAttr(target.char)}">
+          <div class="alpha-char">${a.char}</div>
+          <div class="alpha-rom">${a.rom}</div>
+        </div>`).join('')}
+    </div>`;
+
+  document.querySelectorAll('.alpha-card').forEach(card=>{
+    card.addEventListener('click',()=>{
+      if(answeredThisQ) return;
+      answeredThisQ=true;
+      const chosen=card.dataset.char;
+      const correct=card.dataset.correct;
+      document.querySelectorAll('.alpha-card').forEach(c=>c.style.pointerEvents='none');
+      const isCorrect=chosen===correct;
+      card.style.borderColor=isCorrect?'#2A9D8F':'var(--red)';
+      card.style.background=isCorrect?'rgba(42,157,143,.15)':'rgba(230,51,41,.12)';
+      if(!isCorrect){
+        document.querySelectorAll('.alpha-card').forEach(c=>{
+          if(c.dataset.char===correct){c.style.borderColor='#2A9D8F';c.style.background='rgba(42,157,143,.15)';}
+        });
+      }
+      handleAnswer(isCorrect);
+    });
+  });
+}
+
+// ── CULTURE ──
+function renderCulture(body,L){
+  const items=L.culture;
+  const item=items[questionIndex % items.length];
+
+  body.innerHTML=`
+    <div class="culture-emoji">${item.emoji}</div>
+    <div class="culture-fact">${item.fact}</div>
+    <div class="culture-q">❓ ${item.q}</div>
+    <div class="culture-opts" id="culture-opts">
+      ${item.opts.map((opt,i)=>`
+        <button class="culture-opt" data-idx="${i}" data-correct="${item.ans}">${opt}</button>`).join('')}
+    </div>`;
+
+  document.querySelectorAll('.culture-opt').forEach(btn=>{
+    btn.addEventListener('click',()=>{
+      if(answeredThisQ) return;
+      answeredThisQ=true;
+      const chosen=parseInt(btn.dataset.idx);
+      const correct=parseInt(btn.dataset.correct);
+      document.querySelectorAll('.culture-opt').forEach(b=>b.disabled=true);
+      const isCorrect=chosen===correct;
+      btn.classList.add(isCorrect?'correct':'wrong');
+      if(!isCorrect){
+        document.querySelectorAll('.culture-opt').forEach(b=>{
+          if(parseInt(b.dataset.idx)===correct) b.classList.add('correct');
+        });
+      }
+      handleAnswer(isCorrect);
+    });
+  });
+}
+
+// ── PHRASE ──
+function renderPhrase(body,L){
+  const phrases=L.phrases;
+  const phrase=phrases[questionIndex % phrases.length];
+  const bank=shuffleArr([...phrase.parts]);
+
+  body.innerHTML=`
+    <div class="phrase-target">Build this sentence:</div>
+    <div class="phrase-meaning">${phrase.meaning}</div>
+    <div class="phrase-build" id="phrase-build">
+      <span class="phrase-placeholder">Click words below to build the phrase...</span>
+    </div>
+    <div class="phrase-bank" id="phrase-bank">
+      ${bank.map((w,i)=>`<div class="word-chip" data-word="${escAttr(w)}" data-idx="${i}">${w}</div>`).join('')}
+    </div>
+    <button class="check-btn" id="check-phrase-btn">CHECK PHRASE ✓</button>`;
+
+  assembled=[];
+
+  document.querySelectorAll('.word-chip').forEach(chip=>{
+    chip.addEventListener('click',()=>{
+      if(chip.classList.contains('used')) return;
+      chip.classList.add('used');
+      assembled.push({word:chip.dataset.word, chip});
+      const build=document.getElementById('phrase-build');
+      const ph=build.querySelector('.phrase-placeholder');
+      if(ph) ph.remove();
+      const slot=document.createElement('div');
+      slot.className='phrase-slot';
+      slot.textContent=chip.dataset.word;
+      slot.addEventListener('click',()=>{
+        slot.remove();
+        chip.classList.remove('used');
+        assembled=assembled.filter(a=>a.chip!==chip);
+        if(document.getElementById('phrase-build').children.length===0){
+          document.getElementById('phrase-build').innerHTML='<span class="phrase-placeholder">Click words below to build the phrase...</span>';
+        }
+      });
+      build.appendChild(slot);
+    });
+  });
+
+  document.getElementById('check-phrase-btn').addEventListener('click',()=>{
+    if(answeredThisQ) return;
+    answeredThisQ=true;
+    const built=assembled.map(a=>a.word).join('');
+    const target=phrase.parts.join('');
+    const isCorrect=built===target;
+    // Visual feedback
+    const build=document.getElementById('phrase-build');
+    build.style.borderColor=isCorrect?'#2A9D8F':'var(--red)';
+    if(!isCorrect){
+      // Show correct answer
+      const fb=document.createElement('div');
+      fb.style.cssText='width:100%;margin-top:10px;font-size:12px;color:#2A9D8F;font-family:Noto Sans JP,Noto Sans Arabic,Noto Sans,serif;';
+      fb.textContent='Correct: '+phrase.parts.join(' ');
+      build.parentNode.insertBefore(fb,build.nextSibling);
+    }
+    handleAnswer(isCorrect);
+  });
+}
+
+// ── WRITE ──
+function renderWrite(body,L){
+  const chars=L.writeChars;
+  const char=chars[questionIndex % chars.length];
+
+  body.innerHTML=`
+    <div class="write-ref-char">${char}</div>
+    <div class="write-label">Trace this character with your mouse</div>
+    <div class="write-canvas-wrap">
+      <div class="write-ghost">${char}</div>
+      <canvas id="draw-canvas" width="640" height="180"></canvas>
+    </div>
+    <div class="write-controls">
+      <button class="wc-btn" id="wc-clear">CLEAR ✕</button>
+      <button class="wc-btn primary" id="wc-submit">SUBMIT ✓</button>
+    </div>`;
+
+  const dc=document.getElementById('draw-canvas');
+  drawCtx=dc.getContext('2d');
+  drawCtx.strokeStyle='#F5C518'; drawCtx.lineWidth=4;
+  drawCtx.lineCap='round'; drawCtx.lineJoin='round';
+
+  dc.addEventListener('mousedown',e=>{
+    isDrawing=true;
+    const r=dc.getBoundingClientRect();
+    lastX=(e.clientX-r.left)*(dc.width/r.width);
+    lastY=(e.clientY-r.top)*(dc.height/r.height);
+  });
+  dc.addEventListener('mousemove',e=>{
+    if(!isDrawing) return;
+    const r=dc.getBoundingClientRect();
+    const x=(e.clientX-r.left)*(dc.width/r.width);
+    const y=(e.clientY-r.top)*(dc.height/r.height);
+    drawCtx.beginPath(); drawCtx.moveTo(lastX,lastY); drawCtx.lineTo(x,y); drawCtx.stroke();
+    lastX=x; lastY=y;
+  });
+  dc.addEventListener('mouseup',()=>isDrawing=false);
+  dc.addEventListener('mouseleave',()=>isDrawing=false);
+
+  // Touch support
+  dc.addEventListener('touchstart',e=>{
+    e.preventDefault(); isDrawing=true;
+    const r=dc.getBoundingClientRect();
+    lastX=(e.touches[0].clientX-r.left)*(dc.width/r.width);
+    lastY=(e.touches[0].clientY-r.top)*(dc.height/r.height);
+  },{passive:false});
+  dc.addEventListener('touchmove',e=>{
+    e.preventDefault(); if(!isDrawing) return;
+    const r=dc.getBoundingClientRect();
+    const x=(e.touches[0].clientX-r.left)*(dc.width/r.width);
+    const y=(e.touches[0].clientY-r.top)*(dc.height/r.height);
+    drawCtx.beginPath(); drawCtx.moveTo(lastX,lastY); drawCtx.lineTo(x,y); drawCtx.stroke();
+    lastX=x; lastY=y;
+  },{passive:false});
+  dc.addEventListener('touchend',()=>isDrawing=false);
+
+  document.getElementById('wc-clear').addEventListener('click',()=>{
+    if(drawCtx) drawCtx.clearRect(0,0,640,180);
+  });
+
+  document.getElementById('wc-submit').addEventListener('click',()=>{
+    if(answeredThisQ) return;
+    answeredThisQ=true;
+    const data=drawCtx.getImageData(0,0,640,180).data;
+    const hasDrawing=data.some((v,i)=>i%4===3&&v>10);
+    handleAnswer(hasDrawing);
+    if(!hasDrawing){
+      const wrap=document.querySelector('.write-canvas-wrap');
+      wrap.style.borderColor='var(--red)';
+      const msg=document.createElement('div');
+      msg.style.cssText='text-align:center;font-size:12px;color:var(--red);margin-top:8px;font-family:Space Mono,monospace;letter-spacing:1px;';
+      msg.textContent='Please draw something first!';
+      wrap.after(msg);
+      answeredThisQ=false; // allow retry
+    }
+  });
+}
+
+// ── STORY ──
+function renderStory(body,L){
+  const story=L.story;
+  body.innerHTML=`
+    <div class="story-title">${story.title}</div>
+    ${story.lines.map(line=>{
+      let native=line.native;
+      if(line.words){
+        Object.entries(line.words).forEach(([w,t])=>{
+          native=native.replace(w,`<span class="word-hl" title="${t}">${w}</span>`);
+        });
+      }
+      return `<div class="story-line">
+        <div class="story-native">${native}</div>
+        <div class="story-trans">${line.eng}</div>
+        ${line.words?`<div class="story-words">${Object.entries(line.words).map(([w,t])=>`<span class="story-word-tag">${w} = ${t}</span>`).join('')}</div>`:''}
+      </div>`;
+    }).join('')}
+    <div style="font-size:10px;font-family:Space Mono,monospace;letter-spacing:2px;color:rgba(240,237,226,.3);margin-top:12px;">HOVER YELLOW WORDS FOR TRANSLATIONS</div>`;
+
+  // Auto-complete after a moment
+  setTimeout(()=>{ if(!answeredThisQ){ answeredThisQ=true; handleAnswer(true); }},1000);
+}
+
+// ── ANSWER HANDLER ──
+function handleAnswer(isCorrect){
+  if(isCorrect){ score++; streak++; xp=Math.min(xp+10,100); }
+  else { streak=0; }
+
+  document.getElementById('streak-num').textContent=streak;
+  document.getElementById('xp-fill').style.width=xp+'%';
+  document.getElementById('xp-num').textContent=`${xp} / 100 XP`;
+
+  const flash=document.getElementById('score-flash');
+  flash.textContent=isCorrect?'+10 ✓':'✗';
+  flash.style.color=isCorrect?'#F5C518':'#E63329';
+  flash.classList.add('show');
+  setTimeout(()=>flash.classList.remove('show'),900);
+
+  if(currentGame!=='story'){
+    document.getElementById('continue-btn').classList.add('show');
+  }
+}
+
+function nextQuestion(){
+  questionIndex++;
+  if(questionIndex>=QUESTIONS) showResults();
+  else renderQuestion();
+}
+
+function showResults(){
+  document.getElementById('game-panel').classList.remove('show');
+  const rs=document.getElementById('results-screen');
+  rs.classList.add('show');
+  const pct=(score/QUESTIONS)*100;
+  const grade=pct===100?'PERFECT':pct>=60?'GREAT!':'KEEP GOING';
+  const cls=pct===100?'perfect':pct>=60?'good':'ok';
+  document.getElementById('result-grade').textContent=grade;
+  document.getElementById('result-grade').className='result-big '+cls;
+  document.getElementById('result-msg').textContent=`${score} / ${QUESTIONS} CORRECT`;
+  document.getElementById('result-xp').textContent=`+${score*5} XP EARNED`;
+  if(pct>=60) progress[currentGame]=Math.min(100,progress[currentGame]+20);
+}
+
+function playAgain(){
+  document.getElementById('results-screen').classList.remove('show');
+  launchGame(currentGame);
+}
+
+function backToMap(){
+  document.getElementById('results-screen').classList.remove('show');
+  openWorldMap();
+}
+
+// ── UTILS ──
+function shuffleArr(arr){ return [...arr].sort(()=>Math.random()-.5); }
+function escAttr(str){ return String(str).replace(/"/g,'&quot;').replace(/'/g,'&#39;'); }
+
+// Expose globals
+window.pickLang=pickLang;
+window.enterWorld=enterWorld;
+window.openWorldMap=openWorldMap;
+window.closeMap=closeMap;
+window.showInstructions=showInstructions;
+window.startFromInstr=startFromInstr;
+window.launchGame=launchGame;
+window.closeGame=closeGame;
+window.nextQuestion=nextQuestion;
+window.playAgain=playAgain;
+window.backToMap=backToMap;
+</script>
+</body>
+</html>
