@@ -453,7 +453,7 @@
 
 <!-- Status Bar -->
 <div id="status-bar">
-  <div id="status-left">6 NEURAL ZONES · THREE.JS + BAUHAUS</div>
+  <div id="status-left">7 NEURAL ZONES · THREE.JS + BAUHAUS</div>
   <div id="zone-indicator">HOVER A ZONE</div>
 </div>
 
@@ -578,6 +578,25 @@ const ZONES = [
       { label: "Storytelling", cls: "red" },
     ],
     projects: ["Interactive CV", "Data Art Gallery", "Scroll Narratives"]
+  },
+  {
+    id: 7,
+    name: "LINGUISTICS",
+    tag: "GLYPH/SPACE",
+    color: 0xFFFFFF,
+    emissive: 0x444444,
+    position: [0.0, 0.8, 2.0],
+    url: "src/zones/linguistics/",
+    desc: "Unicode 3D Visual Explorer. Navigate through scripts, search glyphs, and discover the visual patterns of written language across cultures.",
+    skills: [
+      { label: "Unicode", cls: "white" },
+      { label: "Typography", cls: "white" },
+      { label: "Linguistics", cls: "white" },
+      { label: "Data Visualization", cls: "blue" },
+      { label: "WebGL", cls: "red" },
+      { label: "Interactive Design", cls: "yellow" },
+    ],
+    projects: ["GLYPH/SPACE Explorer", "Unicode Database", "Script Analysis Tool"]
   }
 ];
 
@@ -619,16 +638,22 @@ yellowLight.position.set(0, 4, -2);
 scene.add(yellowLight);
 
 // ============================================================
-//  BRAIN — Central organic mesh
+//  BRAIN — Central organic mesh with improved brain-like features
 // ============================================================
 function createBrainMesh() {
-  // Create an organic brain-like shape using displaced sphere
-  const geo = new THREE.SphereGeometry(2.0, 64, 64);
+  // Create a more brain-like shape using elongated sphere with complex noise
+  const geo = new THREE.SphereGeometry(2.2, 128, 128);
+
+  // Elongate in one direction to make it more brain-like
+  geo.scale(1.0, 0.85, 1.2);
+
   const pos = geo.attributes.position;
 
-  // Distort to look more brain-like
-  const noise = (x, y, z, freq) => {
-    return Math.sin(x * freq) * Math.cos(y * freq * 1.3) * Math.sin(z * freq * 0.7);
+  // More complex brain-like distortion with multiple frequencies
+  const noise = (x, y, z, freq, amp) => {
+    return amp * (Math.sin(x * freq) * Math.cos(y * freq * 1.3) * Math.sin(z * freq * 0.7) +
+                  Math.sin(x * freq * 2.1) * Math.cos(y * freq * 1.7) * 0.3 +
+                  Math.sin(z * freq * 3.1) * Math.cos(x * freq * 2.3) * 0.2);
   };
 
   for (let i = 0; i < pos.count; i++) {
@@ -637,16 +662,19 @@ function createBrainMesh() {
     const z = pos.getZ(i);
     const r = Math.sqrt(x*x + y*y + z*z);
 
-    // Multiple octaves of noise for organic feel
-    const d = 0.18 * noise(x, y, z, 2.5)
-            + 0.10 * noise(x*2, y*2, z*2, 4.0)
-            + 0.05 * noise(x*4, y*4, z*4, 6.0)
-            + 0.04 * Math.sin(y * 3.5) * Math.cos(z * 2.8);
+    // Multiple octaves for more organic, brain-like surface
+    const d = noise(x, y, z, 3.0, 0.12) +    // Large folds (gyri/sulci)
+              noise(x, y, z, 6.0, 0.08) +    // Medium details
+              noise(x, y, z, 12.0, 0.04) +   // Small surface texture
+              noise(x, y, z, 24.0, 0.02);    // Fine details
 
-    // Flatten bottom slightly (like real brain)
-    const yScale = y < 0 ? 0.85 : 1.0;
+    // Flatten bottom slightly (like real brain on skull)
+    const yScale = y < -0.5 ? 0.75 : 1.0;
 
-    const nx = x + x/r * d;
+    // Add some asymmetry (real brains aren't perfectly symmetric)
+    const asymmetry = Math.sin(y * 8) * 0.02;
+
+    const nx = x + x/r * (d + asymmetry);
     const ny = (y + y/r * d) * yScale;
     const nz = z + z/r * d;
 
@@ -655,9 +683,9 @@ function createBrainMesh() {
   geo.computeVertexNormals();
 
   const mat = new THREE.MeshStandardMaterial({
-    color: 0x1A1A1A,
-    roughness: 0.85,
-    metalness: 0.1,
+    color: 0x2A2A2A,
+    roughness: 0.9,
+    metalness: 0.05,
     wireframe: false,
   });
 
@@ -668,13 +696,13 @@ function createBrainMesh() {
 
   // Wireframe overlay — Bauhaus technical feel
   const wireMat = new THREE.MeshBasicMaterial({
-    color: 0x222222,
+    color: 0x444444,
     wireframe: true,
     transparent: true,
-    opacity: 0.12,
+    opacity: 0.08,
   });
   const wire = new THREE.Mesh(geo.clone(), wireMat);
-  wire.scale.setScalar(1.001);
+  wire.scale.setScalar(1.002);
   scene.add(wire);
 
   return brain;
@@ -884,7 +912,6 @@ canvas.addEventListener('mousemove', (e) => {
     const dy = e.clientY - prevMouse.y;
     targetRotY += dx * 0.005;
     targetRotX += dy * 0.005;
-    targetRotX = Math.max(-0.8, Math.min(0.8, targetRotX));
     prevMouse = { x: e.clientX, y: e.clientY };
   }
 
