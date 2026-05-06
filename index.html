@@ -549,6 +549,7 @@ const ZONES = [
     emissive: 0x5C200A,
     position: [-1.4, -0.6, 1.0],
     url: "src/zones/games/",
+    gamePage: "src/zones/games/games.html",
     desc: "Play as a design language. Games as a medium for empathy, exploration, and delight — where mechanics become metaphors.",
     skills: [
       { label: "Unity", cls: "white" },
@@ -1039,10 +1040,16 @@ function openPanel(zone) {
   ).join('');
 
   const projEl = document.getElementById('zone-projects-list');
-  projEl.innerHTML = zone.projects.map(p =>
-    `<div class="project-item" onclick="navigateToZone('${zone.url}')"><span>${p}</span><span class="arrow">→</span></div>`
-  ).join('');
+    projEl.innerHTML = zone.projects.map(p => {
+      const target = (zone.gamePage && p === 'Language Game')
+        ? zone.gamePage
+        : zone.url;
+      return `<div class="project-item" onclick="navigateToZone('${target}')"><span>${p}</span><span class="arrow">→</span></div>`;
+    }).join('');
 
+    if (zone.gamePage) {
+      projEl.innerHTML += `<div class="project-item" onclick="navigateToZone('${zone.gamePage}')"><span>PLAY LANGUAGE GAME</span><span class="arrow">→</span></div>`;
+    }
   document.getElementById('zone-panel').classList.add('open');
 }
 
