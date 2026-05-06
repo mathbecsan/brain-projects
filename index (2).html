@@ -1,0 +1,1181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MIND/SPACE — Portfolio</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Space+Mono:wght@400;700&family=Bebas+Neue&family=IBM+Plex+Sans:wght@300;400;600&display=swap');
+
+  :root {
+    --bauhaus-red: #E63329;
+    --bauhaus-yellow: #F5C518;
+    --bauhaus-blue: #1B4FDB;
+    --bauhaus-black: #0A0A0A;
+    --bauhaus-white: #F2EFE4;
+    --bauhaus-gray: #2A2A2A;
+  }
+
+  * { margin: 0; padding: 0; box-sizing: border-box; }
+
+  body {
+    background: var(--bauhaus-black);
+    color: var(--bauhaus-white);
+    font-family: 'IBM Plex Sans', sans-serif;
+    overflow: hidden;
+    cursor: none;
+  }
+
+  #canvas-container {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100vw; height: 100vh;
+  }
+
+  canvas { display: block; }
+
+  /* Custom cursor */
+  #cursor {
+    position: fixed;
+    width: 12px; height: 12px;
+    background: var(--bauhaus-red);
+    border-radius: 50%;
+    pointer-events: none;
+    z-index: 9999;
+    transform: translate(-50%, -50%);
+    transition: transform 0.1s, width 0.2s, height 0.2s, background 0.2s;
+    mix-blend-mode: difference;
+  }
+  #cursor.hover {
+    width: 40px; height: 40px;
+    background: var(--bauhaus-yellow);
+  }
+
+  /* HUD Navigation */
+  #hud {
+    position: fixed;
+    top: 0; left: 0; right: 0;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 24px 40px;
+    z-index: 100;
+    mix-blend-mode: normal;
+  }
+
+  #logo {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 28px;
+    letter-spacing: 4px;
+    color: var(--bauhaus-white);
+  }
+  #logo span { color: var(--bauhaus-red); }
+
+  #nav-hint {
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    color: rgba(242,239,228,0.4);
+    letter-spacing: 2px;
+    text-transform: uppercase;
+  }
+
+  /* Bauhaus grid lines overlay */
+  #grid-overlay {
+    position: fixed;
+    top: 0; left: 0;
+    width: 100%; height: 100%;
+    pointer-events: none;
+    z-index: 1;
+    opacity: 0.04;
+  }
+
+  /* Zone Panel */
+  #zone-panel {
+    position: fixed;
+    right: -420px;
+    top: 50%;
+    transform: translateY(-50%);
+    width: 380px;
+    background: var(--bauhaus-black);
+    border-left: 3px solid var(--bauhaus-red);
+    padding: 40px 36px;
+    z-index: 200;
+    transition: right 0.5s cubic-bezier(0.22,1,0.36,1);
+  }
+
+  #zone-panel.open { right: 0; }
+
+  #zone-panel-close {
+    position: absolute;
+    top: 20px; right: 24px;
+    background: none;
+    border: 1px solid rgba(242,239,228,0.3);
+    color: var(--bauhaus-white);
+    width: 36px; height: 36px;
+    display: flex; align-items: center; justify-content: center;
+    cursor: none;
+    font-size: 18px;
+    transition: background 0.2s;
+  }
+  #zone-panel-close:hover { background: var(--bauhaus-red); border-color: var(--bauhaus-red); }
+
+  #zone-number {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 72px;
+    line-height: 1;
+    color: var(--bauhaus-red);
+    opacity: 0.15;
+    position: absolute;
+    top: 24px; left: 24px;
+  }
+
+  #zone-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: var(--bauhaus-yellow);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+    margin-top: 8px;
+  }
+
+  #zone-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: 48px;
+    letter-spacing: 2px;
+    line-height: 1;
+    margin-bottom: 20px;
+    color: var(--bauhaus-white);
+  }
+
+  #zone-desc {
+    font-size: 14px;
+    line-height: 1.8;
+    color: rgba(242,239,228,0.7);
+    margin-bottom: 28px;
+  }
+
+  #zone-skills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 8px;
+    margin-bottom: 32px;
+  }
+
+  .skill-tag {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    padding: 6px 12px;
+    border: 1px solid;
+    letter-spacing: 1px;
+    text-transform: uppercase;
+  }
+
+  .skill-tag.red { border-color: var(--bauhaus-red); color: var(--bauhaus-red); }
+  .skill-tag.blue { border-color: var(--bauhaus-blue); color: #7B9FFF; }
+  .skill-tag.yellow { border-color: var(--bauhaus-yellow); color: var(--bauhaus-yellow); }
+  .skill-tag.white { border-color: rgba(242,239,228,0.4); color: rgba(242,239,228,0.7); }
+
+  #zone-projects {
+    border-top: 1px solid rgba(242,239,228,0.1);
+    padding-top: 24px;
+  }
+
+  #zone-projects h4 {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 3px;
+    color: rgba(242,239,228,0.3);
+    text-transform: uppercase;
+    margin-bottom: 16px;
+  }
+
+  .project-item {
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    padding: 10px 0;
+    border-bottom: 1px solid rgba(242,239,228,0.06);
+    cursor: none;
+    transition: opacity 0.2s;
+  }
+
+  .project-item:hover { opacity: 0.7; }
+
+  .project-item span {
+    font-size: 13px;
+    color: var(--bauhaus-white);
+  }
+  .project-item .arrow {
+    font-size: 12px;
+    color: var(--bauhaus-red);
+  }
+
+  /* Bottom status bar */
+  #status-bar {
+    position: fixed;
+    bottom: 0; left: 0; right: 0;
+    padding: 16px 40px;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    z-index: 100;
+    border-top: 1px solid rgba(242,239,228,0.06);
+  }
+
+  #status-left {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(242,239,228,0.3);
+    text-transform: uppercase;
+  }
+
+  #zone-indicator {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(242,239,228,0.3);
+    text-transform: uppercase;
+    transition: color 0.3s;
+  }
+
+  #zone-indicator.active { color: var(--bauhaus-yellow); }
+
+  /* Intro screen */
+  #intro {
+    position: fixed;
+    inset: 0;
+    background: var(--bauhaus-black);
+    z-index: 1000;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    transition: opacity 0.8s ease, pointer-events 0s 0.8s;
+  }
+
+  #intro.hidden { opacity: 0; pointer-events: none; }
+
+  #intro-title {
+    font-family: 'Bebas Neue', sans-serif;
+    font-size: clamp(60px, 12vw, 140px);
+    letter-spacing: 8px;
+    text-align: center;
+    line-height: 0.9;
+    margin-bottom: 32px;
+  }
+
+  #intro-title .line2 { color: var(--bauhaus-red); }
+
+  #intro-sub {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 4px;
+    color: rgba(242,239,228,0.4);
+    text-transform: uppercase;
+    margin-bottom: 60px;
+    text-align: center;
+  }
+
+  #enter-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 12px;
+    letter-spacing: 3px;
+    text-transform: uppercase;
+    padding: 16px 48px;
+    background: transparent;
+    border: 2px solid var(--bauhaus-white);
+    color: var(--bauhaus-white);
+    cursor: none;
+    transition: background 0.2s, color 0.2s, border-color 0.2s;
+    position: relative;
+    overflow: hidden;
+  }
+
+  #enter-btn:hover {
+    background: var(--bauhaus-red);
+    border-color: var(--bauhaus-red);
+    color: var(--bauhaus-white);
+  }
+
+  /* Bauhaus decorative elements on intro */
+  .bauhaus-deco {
+    position: absolute;
+    pointer-events: none;
+  }
+
+  .bauhaus-circle {
+    border-radius: 50%;
+    border: 2px solid;
+  }
+
+  /* Loading bar */
+  #loading-bar {
+    position: absolute;
+    bottom: 40px;
+    left: 50%;
+    transform: translateX(-50%);
+    width: 200px;
+  }
+
+  #loading-text {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    color: rgba(242,239,228,0.3);
+    text-transform: uppercase;
+    text-align: center;
+    margin-bottom: 12px;
+  }
+
+  #loading-track {
+    height: 1px;
+    background: rgba(242,239,228,0.1);
+    width: 100%;
+  }
+
+  #loading-fill {
+    height: 1px;
+    background: var(--bauhaus-red);
+    width: 0%;
+    transition: width 0.3s;
+  }
+
+  /* Tooltip */
+  #tooltip {
+    position: fixed;
+    font-family: 'Space Mono', monospace;
+    font-size: 11px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    color: var(--bauhaus-yellow);
+    pointer-events: none;
+    z-index: 500;
+    opacity: 0;
+    transition: opacity 0.2s;
+    white-space: nowrap;
+  }
+
+  #tooltip.show { opacity: 1; }
+
+  /* Bauhaus color accents on corners */
+  .corner-accent {
+    position: fixed;
+    z-index: 2;
+    pointer-events: none;
+  }
+  .ca-tl { top: 0; left: 0; width: 4px; height: 80px; background: var(--bauhaus-red); }
+  .ca-tr { top: 0; right: 0; width: 4px; height: 80px; background: var(--bauhaus-blue); }
+  .ca-bl { bottom: 0; left: 0; width: 80px; height: 4px; background: var(--bauhaus-yellow); }
+  .ca-br { bottom: 0; right: 0; width: 4px; height: 80px; background: var(--bauhaus-yellow); }
+
+  /* Audio toggle */
+  #audio-btn {
+    font-family: 'Space Mono', monospace;
+    font-size: 10px;
+    letter-spacing: 2px;
+    text-transform: uppercase;
+    background: none;
+    border: 1px solid rgba(242,239,228,0.2);
+    color: rgba(242,239,228,0.5);
+    padding: 8px 16px;
+    cursor: none;
+    transition: all 0.2s;
+  }
+  #audio-btn:hover, #audio-btn.active {
+    border-color: var(--bauhaus-yellow);
+    color: var(--bauhaus-yellow);
+  }
+</style>
+</head>
+<body>
+
+<!-- Custom cursor -->
+<div id="cursor"></div>
+
+<!-- Bauhaus corner accents -->
+<div class="corner-accent ca-tl"></div>
+<div class="corner-accent ca-tr"></div>
+<div class="corner-accent ca-bl"></div>
+<div class="corner-accent ca-br"></div>
+
+<!-- Tooltip -->
+<div id="tooltip"></div>
+
+<!-- Intro Screen -->
+<div id="intro">
+  <!-- Bauhaus decorative geometry -->
+  <div class="bauhaus-deco" style="top:10%;left:8%;width:120px;height:120px;border-radius:50%;border:2px solid rgba(230,51,41,0.3);"></div>
+  <div class="bauhaus-deco" style="top:15%;left:11%;width:60px;height:60px;background:var(--bauhaus-red);opacity:0.15;"></div>
+  <div class="bauhaus-deco" style="bottom:15%;right:10%;width:160px;height:4px;background:var(--bauhaus-yellow);opacity:0.4;"></div>
+  <div class="bauhaus-deco" style="bottom:20%;right:12%;width:80px;height:80px;border:2px solid rgba(27,79,219,0.4);border-radius:50%;"></div>
+  <div class="bauhaus-deco" style="top:20%;right:8%;width:40px;height:200px;background:rgba(27,79,219,0.08);"></div>
+
+  <div id="intro-title">
+    MIND<br>
+    <span class="line2">/ SPACE</span>
+  </div>
+  <div id="intro-sub">Interactive Brain Portfolio &mdash; Navigate the zones of thought</div>
+  <button id="enter-btn" onclick="enterPortfolio()">ENTER THE MIND</button>
+
+  <div id="loading-bar">
+    <div id="loading-text">LOADING NEURAL NETWORK</div>
+    <div id="loading-track"><div id="loading-fill"></div></div>
+  </div>
+</div>
+
+<!-- Main HUD -->
+<div id="hud">
+  <div id="logo">MIND<span>/</span>SPACE</div>
+  <div id="nav-hint">DRAG TO ROTATE · CLICK A ZONE TO EXPLORE</div>
+  <button id="audio-btn" onclick="toggleAudio()">♪ AUDIO OFF</button>
+</div>
+
+<!-- 3D Canvas -->
+<div id="canvas-container">
+  <canvas id="three-canvas"></canvas>
+</div>
+
+<!-- Zone Detail Panel -->
+<div id="zone-panel">
+  <button id="zone-panel-close" onclick="closePanel()">✕</button>
+  <div id="zone-number">01</div>
+  <div id="zone-tag">SECTOR</div>
+  <div id="zone-title">TITLE</div>
+  <div id="zone-desc">Description here.</div>
+  <div id="zone-skills"></div>
+  <div id="zone-projects">
+    <h4>Featured Work</h4>
+    <div id="zone-projects-list"></div>
+  </div>
+</div>
+
+<!-- Status Bar -->
+<div id="status-bar">
+  <div id="status-left">6 NEURAL ZONES · THREE.JS + BAUHAUS</div>
+  <div id="zone-indicator">HOVER A ZONE</div>
+</div>
+
+<!-- Three.js -->
+<script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+<script>
+// ============================================================
+//  DATA — Brain Zones
+// ============================================================
+const ZONES = [
+  {
+    id: 1,
+    name: "HCI & RESEARCH",
+    tag: "Cognitive Systems",
+    color: 0xE63329,
+    emissive: 0x6B0F0A,
+    position: [-2.2, 1.2, 0.5],
+    desc: "Human-Computer Interaction sits at the core — understanding how people think, perceive, and interact with digital systems. Research-driven design with cognitive psychology at its heart.",
+    skills: [
+      { label: "User Research", cls: "red" },
+      { label: "Cognitive Science", cls: "red" },
+      { label: "Usability Testing", cls: "white" },
+      { label: "Eye-Tracking", cls: "white" },
+      { label: "A/B Testing", cls: "blue" },
+      { label: "Data Analysis", cls: "blue" },
+    ],
+    projects: ["Neural Nav Study", "Haptic Interface Research", "VR Attention Study"]
+  },
+  {
+    id: 2,
+    name: "UX / UI DESIGN",
+    tag: "Visual Systems",
+    color: 0x1B4FDB,
+    emissive: 0x071A5A,
+    position: [2.0, 1.4, 0.2],
+    desc: "Where function meets form. Crafting interfaces that disappear — so intuitive users never think about the interface, only the experience it enables.",
+    skills: [
+      { label: "Figma", cls: "blue" },
+      { label: "Design Systems", cls: "blue" },
+      { label: "Prototyping", cls: "white" },
+      { label: "Motion Design", cls: "yellow" },
+      { label: "Accessibility", cls: "white" },
+      { label: "Typography", cls: "red" },
+    ],
+    projects: ["Design System ×3", "Onboarding Flows", "Dark Mode Overhaul"]
+  },
+  {
+    id: 3,
+    name: "3D MODELLING",
+    tag: "Spatial Creation",
+    color: 0xF5C518,
+    emissive: 0x5C4800,
+    position: [-0.3, 2.4, -1.0],
+    desc: "Building worlds beyond the screen. From architectural visualization to game-ready assets — shaping geometry into narrative.",
+    skills: [
+      { label: "Blender", cls: "yellow" },
+      { label: "Three.js", cls: "yellow" },
+      { label: "Maya", cls: "white" },
+      { label: "WebGL", cls: "red" },
+      { label: "Shaders", cls: "blue" },
+      { label: "Rigging", cls: "white" },
+    ],
+    projects: ["Procedural City", "Brain Visualization", "Product Renders"]
+  },
+  {
+    id: 4,
+    name: "DEVELOPMENT",
+    tag: "Systems & Code",
+    color: 0x2A9D8F,
+    emissive: 0x083D38,
+    position: [1.8, -0.8, 1.2],
+    desc: "Full-stack thinking — from database schema to pixel-perfect UI. Building systems that scale, perform, and surprise.",
+    skills: [
+      { label: "React / Next.js", cls: "blue" },
+      { label: "TypeScript", cls: "blue" },
+      { label: "Python", cls: "yellow" },
+      { label: "Node.js", cls: "white" },
+      { label: "WebGL / GLSL", cls: "red" },
+      { label: "Three.js", cls: "yellow" },
+    ],
+    projects: ["Portfolio Engine", "Real-time Dashboard", "ML Interface"]
+  },
+  {
+    id: 5,
+    name: "GAMES & APPS",
+    tag: "Interactive Media",
+    color: 0xE76F51,
+    emissive: 0x5C200A,
+    position: [-1.8, -0.6, -0.8],
+    desc: "Play as a design language. Games as a medium for empathy, exploration, and delight — where mechanics become metaphors.",
+    skills: [
+      { label: "Unity", cls: "white" },
+      { label: "Unreal Engine", cls: "red" },
+      { label: "Game Design", cls: "yellow" },
+      { label: "iOS / Swift", cls: "blue" },
+      { label: "Android", cls: "white" },
+      { label: "Audio Design", cls: "yellow" },
+    ],
+    projects: ["Mind Labyrinth Game", "Accessibility App", "AR Campus Map"]
+  },
+  {
+    id: 6,
+    name: "WEB EXPERIENCES",
+    tag: "Creative Dev",
+    color: 0x8338EC,
+    emissive: 0x2D0A6B,
+    position: [0.2, -1.8, 0.5],
+    desc: "The browser as canvas. Crafting web experiences that blur the line between art and interface — storytelling through interaction.",
+    skills: [
+      { label: "Creative Coding", cls: "blue" },
+      { label: "GSAP", cls: "white" },
+      { label: "WebGL", cls: "red" },
+      { label: "CSS Art", cls: "yellow" },
+      { label: "SVG Animation", cls: "white" },
+      { label: "Storytelling", cls: "red" },
+    ],
+    projects: ["Interactive CV", "Data Art Gallery", "Scroll Narratives"]
+  }
+];
+
+// ============================================================
+//  THREE.JS SETUP
+// ============================================================
+const canvas = document.getElementById('three-canvas');
+const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, alpha: true });
+renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+renderer.setSize(window.innerWidth, window.innerHeight);
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+renderer.toneMapping = THREE.ACESFilmicToneMapping;
+renderer.toneMappingExposure = 1.2;
+
+const scene = new THREE.Scene();
+scene.background = new THREE.Color(0x0A0A0A);
+scene.fog = new THREE.FogExp2(0x0A0A0A, 0.08);
+
+const camera = new THREE.PerspectiveCamera(60, window.innerWidth / window.innerHeight, 0.1, 100);
+camera.position.set(0, 0, 8);
+
+// ============================================================
+//  LIGHTING — Bauhaus primary colors as lights
+// ============================================================
+const ambientLight = new THREE.AmbientLight(0x111111, 0.8);
+scene.add(ambientLight);
+
+const redLight = new THREE.PointLight(0xE63329, 3, 15);
+redLight.position.set(-4, 3, 2);
+scene.add(redLight);
+
+const blueLight = new THREE.PointLight(0x1B4FDB, 3, 15);
+blueLight.position.set(4, -2, 3);
+scene.add(blueLight);
+
+const yellowLight = new THREE.PointLight(0xF5C518, 2, 12);
+yellowLight.position.set(0, 4, -2);
+scene.add(yellowLight);
+
+// ============================================================
+//  BRAIN — Central organic mesh
+// ============================================================
+function createBrainMesh() {
+  // Create an organic brain-like shape using displaced sphere
+  const geo = new THREE.SphereGeometry(2.0, 64, 64);
+  const pos = geo.attributes.position;
+
+  // Distort to look more brain-like
+  const noise = (x, y, z, freq) => {
+    return Math.sin(x * freq) * Math.cos(y * freq * 1.3) * Math.sin(z * freq * 0.7);
+  };
+
+  for (let i = 0; i < pos.count; i++) {
+    const x = pos.getX(i);
+    const y = pos.getY(i);
+    const z = pos.getZ(i);
+    const r = Math.sqrt(x*x + y*y + z*z);
+
+    // Multiple octaves of noise for organic feel
+    const d = 0.18 * noise(x, y, z, 2.5)
+            + 0.10 * noise(x*2, y*2, z*2, 4.0)
+            + 0.05 * noise(x*4, y*4, z*4, 6.0)
+            + 0.04 * Math.sin(y * 3.5) * Math.cos(z * 2.8);
+
+    // Flatten bottom slightly (like real brain)
+    const yScale = y < 0 ? 0.85 : 1.0;
+
+    const nx = x + x/r * d;
+    const ny = (y + y/r * d) * yScale;
+    const nz = z + z/r * d;
+
+    pos.setXYZ(i, nx, ny, nz);
+  }
+  geo.computeVertexNormals();
+
+  const mat = new THREE.MeshStandardMaterial({
+    color: 0x1A1A1A,
+    roughness: 0.85,
+    metalness: 0.1,
+    wireframe: false,
+  });
+
+  const brain = new THREE.Mesh(geo, mat);
+  brain.castShadow = true;
+  brain.receiveShadow = true;
+  scene.add(brain);
+
+  // Wireframe overlay — Bauhaus technical feel
+  const wireMat = new THREE.MeshBasicMaterial({
+    color: 0x222222,
+    wireframe: true,
+    transparent: true,
+    opacity: 0.12,
+  });
+  const wire = new THREE.Mesh(geo.clone(), wireMat);
+  wire.scale.setScalar(1.001);
+  scene.add(wire);
+
+  return brain;
+}
+
+const brain = createBrainMesh();
+
+// ============================================================
+//  BRAIN LOBES — Left/Right hemisphere split indicator
+// ============================================================
+function addHemisphereSplit() {
+  const geo = new THREE.PlaneGeometry(0.01, 3.8, 1, 1);
+  const mat = new THREE.MeshBasicMaterial({
+    color: 0xE63329,
+    transparent: true,
+    opacity: 0.35,
+    side: THREE.DoubleSide,
+  });
+  const plane = new THREE.Mesh(geo, mat);
+  plane.position.z = 0.1;
+  scene.add(plane);
+}
+addHemisphereSplit();
+
+// ============================================================
+//  ZONE NODES — Geometric bauhaus shapes on the brain
+// ============================================================
+const zoneNodes = [];
+const raycaster = new THREE.Raycaster();
+const mouse = new THREE.Vector2();
+
+ZONES.forEach((zone, i) => {
+  const group = new THREE.Group();
+  group.position.set(...zone.position);
+  group.userData = { zone, index: i };
+
+  // Outer ring (circle — Bauhaus primary form)
+  const ringGeo = new THREE.TorusGeometry(0.38, 0.04, 16, 64);
+  const ringMat = new THREE.MeshStandardMaterial({
+    color: zone.color,
+    emissive: zone.emissive,
+    emissiveIntensity: 0.5,
+    roughness: 0.2,
+    metalness: 0.3,
+  });
+  const ring = new THREE.Mesh(ringGeo, ringMat);
+  group.add(ring);
+
+  // Inner geometric shape — alternating square/circle/triangle
+  let innerMesh;
+  if (i % 3 === 0) {
+    // Square (bauhaus)
+    const geo = new THREE.BoxGeometry(0.28, 0.28, 0.08);
+    innerMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: zone.color,
+      emissive: zone.emissive,
+      emissiveIntensity: 1.2,
+      roughness: 0.1,
+      metalness: 0.4,
+    }));
+  } else if (i % 3 === 1) {
+    // Circle
+    const geo = new THREE.CircleGeometry(0.18, 32);
+    innerMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: zone.color,
+      emissive: zone.emissive,
+      emissiveIntensity: 1.2,
+      roughness: 0.1,
+    }));
+  } else {
+    // Triangle
+    const geo = new THREE.ConeGeometry(0.18, 0.28, 3);
+    innerMesh = new THREE.Mesh(geo, new THREE.MeshStandardMaterial({
+      color: zone.color,
+      emissive: zone.emissive,
+      emissiveIntensity: 1.2,
+      roughness: 0.1,
+    }));
+  }
+  group.add(innerMesh);
+
+  // Pulse sphere (invisible, used for raycasting)
+  const hitGeo = new THREE.SphereGeometry(0.45, 8, 8);
+  const hitMat = new THREE.MeshBasicMaterial({ visible: false });
+  const hitSphere = new THREE.Mesh(hitGeo, hitMat);
+  hitSphere.userData = { zoneIndex: i };
+  group.add(hitSphere);
+
+  // Point light per zone
+  const pLight = new THREE.PointLight(zone.color, 0.6, 3);
+  group.add(pLight);
+
+  // Connecting line from zone to brain center
+  const lineGeo = new THREE.BufferGeometry().setFromPoints([
+    new THREE.Vector3(0, 0, 0),
+    new THREE.Vector3(-zone.position[0], -zone.position[1], -zone.position[2])
+  ]);
+  const lineMat = new THREE.LineBasicMaterial({
+    color: zone.color,
+    transparent: true,
+    opacity: 0.25,
+  });
+  const line = new THREE.Line(lineGeo, lineMat);
+  group.add(line);
+
+  scene.add(group);
+  zoneNodes.push({ group, ring, innerMesh, light: pLight, zone, line: lineMat });
+});
+
+// ============================================================
+//  PARTICLE FIELD — Neural signals / Bauhaus dots
+// ============================================================
+function createParticles() {
+  const count = 1200;
+  const geo = new THREE.BufferGeometry();
+  const positions = new Float32Array(count * 3);
+  const colors = new Float32Array(count * 3);
+  const bauColors = [
+    [0.902, 0.200, 0.161], // red
+    [0.106, 0.310, 0.859], // blue
+    [0.961, 0.773, 0.094], // yellow
+    [0.8, 0.8, 0.8],       // white
+  ];
+
+  for (let i = 0; i < count; i++) {
+    // Sphere distribution
+    const theta = Math.random() * Math.PI * 2;
+    const phi = Math.acos(2 * Math.random() - 1);
+    const r = 2.5 + Math.random() * 5;
+
+    positions[i*3]     = r * Math.sin(phi) * Math.cos(theta);
+    positions[i*3 + 1] = r * Math.sin(phi) * Math.sin(theta);
+    positions[i*3 + 2] = r * Math.cos(phi);
+
+    const c = bauColors[Math.floor(Math.random() * bauColors.length)];
+    colors[i*3]     = c[0];
+    colors[i*3 + 1] = c[1];
+    colors[i*3 + 2] = c[2];
+  }
+
+  geo.setAttribute('position', new THREE.BufferAttribute(positions, 3));
+  geo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+  const mat = new THREE.PointsMaterial({
+    size: 0.03,
+    vertexColors: true,
+    transparent: true,
+    opacity: 0.6,
+    sizeAttenuation: true,
+  });
+
+  const points = new THREE.Points(geo, mat);
+  scene.add(points);
+  return points;
+}
+
+const particles = createParticles();
+
+// ============================================================
+//  NEURAL CONNECTIONS — Lines between zones
+// ============================================================
+function createNeuralConnections() {
+  const connections = [
+    [0, 1], [1, 2], [2, 3], [3, 4], [4, 5], [5, 0],
+    [0, 3], [1, 4], [2, 5]
+  ];
+
+  connections.forEach(([a, b]) => {
+    const posA = new THREE.Vector3(...ZONES[a].position);
+    const posB = new THREE.Vector3(...ZONES[b].position);
+
+    // Bezier curve connection
+    const mid = posA.clone().add(posB).multiplyScalar(0.5);
+    mid.multiplyScalar(0.4); // pull toward center
+
+    const curve = new THREE.QuadraticBezierCurve3(posA, mid, posB);
+    const pts = curve.getPoints(30);
+    const geo = new THREE.BufferGeometry().setFromPoints(pts);
+    const mat = new THREE.LineBasicMaterial({
+      color: 0x333333,
+      transparent: true,
+      opacity: 0.3,
+    });
+    scene.add(new THREE.Line(geo, mat));
+  });
+}
+createNeuralConnections();
+
+// ============================================================
+//  ORBIT CONTROLS — Manual implementation (no import needed)
+// ============================================================
+let isMouseDown = false;
+let prevMouse = { x: 0, y: 0 };
+let targetRotX = 0, targetRotY = 0;
+let currentRotX = 0, currentRotY = 0;
+let autoRotate = true;
+
+canvas.addEventListener('mousedown', (e) => {
+  isMouseDown = true;
+  autoRotate = false;
+  prevMouse = { x: e.clientX, y: e.clientY };
+});
+
+canvas.addEventListener('mousemove', (e) => {
+  if (isMouseDown) {
+    const dx = e.clientX - prevMouse.x;
+    const dy = e.clientY - prevMouse.y;
+    targetRotY += dx * 0.005;
+    targetRotX += dy * 0.005;
+    targetRotX = Math.max(-0.8, Math.min(0.8, targetRotX));
+    prevMouse = { x: e.clientX, y: e.clientY };
+  }
+
+  // Update mouse for raycasting
+  mouse.x = (e.clientX / window.innerWidth) * 2 - 1;
+  mouse.y = -(e.clientY / window.innerHeight) * 2 + 1;
+});
+
+canvas.addEventListener('mouseup', () => { isMouseDown = false; });
+
+// Touch support
+canvas.addEventListener('touchstart', (e) => {
+  isMouseDown = true;
+  autoRotate = false;
+  prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+});
+canvas.addEventListener('touchmove', (e) => {
+  if (!isMouseDown) return;
+  const dx = e.touches[0].clientX - prevMouse.x;
+  const dy = e.touches[0].clientY - prevMouse.y;
+  targetRotY += dx * 0.005;
+  targetRotX += dy * 0.005;
+  prevMouse = { x: e.touches[0].clientX, y: e.touches[0].clientY };
+  e.preventDefault();
+}, { passive: false });
+canvas.addEventListener('touchend', () => { isMouseDown = false; });
+
+// ============================================================
+//  INTERACTION — Hover & Click
+// ============================================================
+let hoveredZone = null;
+let panelOpen = false;
+
+function checkIntersections() {
+  raycaster.setFromCamera(mouse, camera);
+
+  const hitObjects = zoneNodes.map(n =>
+    n.group.children.find(c => c.userData.zoneIndex !== undefined)
+  ).filter(Boolean);
+
+  const intersects = raycaster.intersectObjects(hitObjects, true);
+
+  if (intersects.length > 0) {
+    const obj = intersects[0].object;
+    let zoneIndex = obj.userData.zoneIndex;
+    if (zoneIndex === undefined && obj.parent) zoneIndex = obj.parent.userData?.zone ? obj.parent.userData.zone.id - 1 : undefined;
+
+    if (zoneIndex !== undefined) {
+      if (hoveredZone !== zoneIndex) {
+        hoveredZone = zoneIndex;
+        showTooltip(ZONES[zoneIndex].name, intersects[0].point);
+        updateZoneIndicator(ZONES[zoneIndex].name);
+        document.getElementById('cursor').classList.add('hover');
+      }
+      return;
+    }
+  }
+
+  if (hoveredZone !== null) {
+    hoveredZone = null;
+    hideTooltip();
+    updateZoneIndicator(null);
+    document.getElementById('cursor').classList.remove('hover');
+  }
+}
+
+canvas.addEventListener('click', () => {
+  if (hoveredZone !== null) {
+    openPanel(ZONES[hoveredZone]);
+  }
+});
+
+function showTooltip(name, point3d) {
+  const tooltip = document.getElementById('tooltip');
+  tooltip.textContent = name;
+  tooltip.classList.add('show');
+}
+
+function hideTooltip() {
+  document.getElementById('tooltip').classList.remove('show');
+}
+
+function updateZoneIndicator(name) {
+  const el = document.getElementById('zone-indicator');
+  if (name) {
+    el.textContent = `ZONE: ${name}`;
+    el.classList.add('active');
+  } else {
+    el.textContent = 'HOVER A ZONE';
+    el.classList.remove('active');
+  }
+}
+
+// Update tooltip position with mouse
+document.addEventListener('mousemove', (e) => {
+  const tooltip = document.getElementById('tooltip');
+  tooltip.style.left = (e.clientX + 20) + 'px';
+  tooltip.style.top = (e.clientY - 10) + 'px';
+
+  // Custom cursor
+  const cursor = document.getElementById('cursor');
+  cursor.style.left = e.clientX + 'px';
+  cursor.style.top = e.clientY + 'px';
+});
+
+// ============================================================
+//  PANEL LOGIC
+// ============================================================
+function openPanel(zone) {
+  panelOpen = true;
+
+  document.getElementById('zone-number').textContent = String(zone.id).padStart(2, '0');
+  document.getElementById('zone-tag').textContent = zone.tag;
+  document.getElementById('zone-title').textContent = zone.name;
+  document.getElementById('zone-desc').textContent = zone.desc;
+
+  const skillsEl = document.getElementById('zone-skills');
+  skillsEl.innerHTML = zone.skills.map(s =>
+    `<span class="skill-tag ${s.cls}">${s.label}</span>`
+  ).join('');
+
+  const projEl = document.getElementById('zone-projects-list');
+  projEl.innerHTML = zone.projects.map(p =>
+    `<div class="project-item"><span>${p}</span><span class="arrow">→</span></div>`
+  ).join('');
+
+  document.getElementById('zone-panel').classList.add('open');
+}
+
+function closePanel() {
+  panelOpen = false;
+  document.getElementById('zone-panel').classList.remove('open');
+}
+
+// ============================================================
+//  AUDIO — Subtle ambient synthesis
+// ============================================================
+let audioCtx = null;
+let audioRunning = false;
+let drones = [];
+
+function toggleAudio() {
+  const btn = document.getElementById('audio-btn');
+  if (!audioCtx) {
+    audioCtx = new (window.AudioContext || window.webkitAudioContext)();
+    startAmbient();
+    audioRunning = true;
+  } else if (audioRunning) {
+    drones.forEach(d => { try { d.stop(); } catch(e) {} });
+    drones = [];
+    audioRunning = false;
+  } else {
+    startAmbient();
+    audioRunning = true;
+  }
+  btn.textContent = audioRunning ? '♪ AUDIO ON' : '♪ AUDIO OFF';
+  btn.classList.toggle('active', audioRunning);
+}
+
+function startAmbient() {
+  if (!audioCtx) return;
+  const freqs = [55, 82.5, 110, 164.8]; // A1, E2, A2, E3 — open fifth drone
+
+  freqs.forEach((freq, i) => {
+    const osc = audioCtx.createOscillator();
+    const gain = audioCtx.createGain();
+    const filter = audioCtx.createBiquadFilter();
+
+    osc.type = i < 2 ? 'sawtooth' : 'sine';
+    osc.frequency.value = freq;
+
+    filter.type = 'lowpass';
+    filter.frequency.value = 800;
+    filter.Q.value = 1;
+
+    gain.gain.value = 0;
+    gain.gain.linearRampToValueAtTime(0.04 - i * 0.008, audioCtx.currentTime + 2);
+
+    osc.connect(filter);
+    filter.connect(gain);
+    gain.connect(audioCtx.destination);
+    osc.start();
+    drones.push(osc);
+  });
+}
+
+// ============================================================
+//  INTRO LOADING + ENTER
+// ============================================================
+let loadingProgress = 0;
+const loadingFill = document.getElementById('loading-fill');
+
+const loadingInterval = setInterval(() => {
+  loadingProgress = Math.min(loadingProgress + Math.random() * 12, 100);
+  loadingFill.style.width = loadingProgress + '%';
+  if (loadingProgress >= 100) {
+    clearInterval(loadingInterval);
+    document.getElementById('loading-text').textContent = 'READY TO ENTER';
+  }
+}, 120);
+
+function enterPortfolio() {
+  document.getElementById('intro').classList.add('hidden');
+  autoRotate = true;
+}
+
+// ============================================================
+//  ANIMATION LOOP
+// ============================================================
+const clock = new THREE.Clock();
+
+function animate() {
+  requestAnimationFrame(animate);
+  const t = clock.getElapsedTime();
+
+  // Auto-rotate when not interacting
+  if (autoRotate) {
+    targetRotY += 0.003;
+  }
+
+  // Smooth rotation
+  currentRotX += (targetRotX - currentRotX) * 0.08;
+  currentRotY += (targetRotY - currentRotY) * 0.08;
+
+  brain.rotation.x = currentRotX;
+  brain.rotation.y = currentRotY;
+  brain.children?.[0] && (brain.children[0].rotation.y = currentRotY);
+
+  // Rotate particle field slowly
+  particles.rotation.y = t * 0.04;
+  particles.rotation.x = t * 0.02;
+
+  // Sync zone nodes to brain rotation
+  const brainGroup = new THREE.Group();
+  scene.traverse(obj => {
+    if (obj.userData && obj.userData.zone) {
+      obj.rotation.x = currentRotX;
+      obj.rotation.y = currentRotY;
+    }
+  });
+
+  // Rotate entire zone group with brain
+  zoneNodes.forEach(({ group }, i) => {
+    group.rotation.x = currentRotX;
+    group.rotation.y = currentRotY;
+
+    // Pulse inner shape
+    const pulse = 1 + 0.08 * Math.sin(t * 2 + i * 1.1);
+    group.children[1] && (group.children[1].scale.setScalar(pulse));
+
+    // Rotate ring
+    group.children[0] && (group.children[0].rotation.z = t * 0.5 + i * 0.8);
+
+    // Hover glow
+    const isHovered = hoveredZone === i;
+    const targetEmissive = isHovered ? 2.5 : 0.8;
+    if (group.children[0] && group.children[0].material) {
+      group.children[0].material.emissiveIntensity += (targetEmissive - group.children[0].material.emissiveIntensity) * 0.1;
+    }
+    if (group.children[1] && group.children[1].material) {
+      group.children[1].material.emissiveIntensity += ((isHovered ? 3.0 : 1.2) - group.children[1].material.emissiveIntensity) * 0.1;
+    }
+
+    // Zone light pulse
+    if (group.children[3]) {
+      group.children[3].intensity = 0.6 + 0.3 * Math.sin(t * 1.5 + i);
+    }
+  });
+
+  // Animate main lights
+  redLight.position.x = Math.sin(t * 0.4) * 4 - 2;
+  redLight.position.y = Math.cos(t * 0.3) * 3 + 1;
+  blueLight.position.x = Math.cos(t * 0.35) * 4 + 1;
+  blueLight.position.z = Math.sin(t * 0.25) * 3 + 2;
+
+  // Raycasting
+  checkIntersections();
+
+  renderer.render(scene, camera);
+}
+
+animate();
+
+// ============================================================
+//  RESIZE
+// ============================================================
+window.addEventListener('resize', () => {
+  camera.aspect = window.innerWidth / window.innerHeight;
+  camera.updateProjectionMatrix();
+  renderer.setSize(window.innerWidth, window.innerHeight);
+});
+
+// Make cursor interactive on clickable UI elements
+document.querySelectorAll('button, .project-item').forEach(el => {
+  el.addEventListener('mouseenter', () => document.getElementById('cursor').classList.add('hover'));
+  el.addEventListener('mouseleave', () => document.getElementById('cursor').classList.remove('hover'));
+});
+</script>
+</body>
+</html>
